@@ -362,6 +362,107 @@ namespace Compiler {
             return block_pos + 1;
 
         }
+        else if (curr.value == "for") {
+            // initializer is at pos+1, firstcomma
+            // condition is at firstcomma + 1, secondcomma
+            // iterator is at secondcomma + 1, do_pos
+
+            size_t firstcomma = pos;
+            while (t[firstcomma].type != TOK_COMMA) {   // this ends the var initializer statement
+                firstcomma++;
+            }
+
+
+
+
+            std::string varname = t[pos + 1].value;
+            if (t[pos + 2].type != TokenType::TOK_SEQ) {
+                throw std::runtime_error("Expected '=' after iterator variable declaration '" + varname + "' in for loop.");
+            }
+
+            // pos + 1 -> x
+            // pos + 2 -> =
+            // pos + 3 -> 5
+
+           
+            // get value by evaluating t[pos+3] to firstcomma
+
+
+            std::vector<Token> infix_expr_initializer(t.begin() + pos + 3, t.begin() + firstcomma);
+            auto initializer_expr_bytecode = evaluate_expression(infix_expr_initializer);
+            bytecode.insert(bytecode.end(), initializer_expr_bytecode.begin(), initializer_expr_bytecode.end());
+
+            // this pushes the value of the initializer expression to the stack
+
+            bytecode.push_back(Instruction(STORE, varname)); // store that value in the initializer variable name (x)
+            
+            // IMPORTANT -> this will be a scope-only variable soon (not accessible in scopes above it) but it'll be global for now
+
+
+
+
+
+
+
+
+
+            size_t secondcomma = firstcomma + 1;
+            while (t[secondcomma].type != TOK_COMMA) {   // this ends the condition statement
+                secondcomma++;
+            }
+
+
+            size_t condition_bytecode_pos = bytecode.size();
+
+            // evaluate the condition statement
+
+
+            std::vector<Token> condition_infix_expr(t.begin() + firstcomma + 1, t.begin() + secondcomma); // condition statement is between first comma and second comma
+            auto condition_expr_bytecode = evaluate_expression(condition_infix_expr);
+            bytecode.insert(bytecode.end(), condition_expr_bytecode.begin(), condition_expr_bytecode.end());
+            // will push value of condition to the top of the stack
+
+
+
+            size_t jze_pos = bytecode.size();
+            bytecode.push_back(Instruction(JZ, 0.0)); // we dont know where the end of the bytecode is yet
+
+
+
+            size_t do_pos = secondcomma + 1;
+            while (t[do_pos].value != "do") {           // this ends the iterator statement
+                do_pos++;
+            }
+
+
+
+            // find the end of the block
+            size_t block_pos = do_pos + 1; // start code block at token right after the 'do'
+            while (block_pos < t.size() && t[block_pos].value != "end") { // stop at 'end'
+                block_pos = compile_block(t, block_pos, bytecode); // compile everything inside of it
+            }
+
+            size_t endpos = block_pos;
+
+
+
+            // slap the iterator statement right after the code runs
+
+
+            std::vector<Token> iterator_infix_expr(t.begin() + secondcomma + 3, t.begin() + do_pos); 
+            auto iterator_expr_bytecode = evaluate_expression(iterator_infix_expr);
+            bytecode.insert(bytecode.end(), iterator_expr_bytecode.begin(), iterator_expr_bytecode.end());
+            bytecode.push_back(Instruction(STORE, varname));
+
+            bytecode.push_back(Instruction(JMP, condition_bytecode_pos));
+
+
+            bytecode[jze_pos].operand = sv((double)bytecode.size()); // patch jze so it knows to jump all the way after all the code if the condition evaluates to false
+
+            return endpos + 1;
+
+
+        } 
         else if (t[pos].type == TokenType::TOK_IDENTIFIER && t[pos + 1].type == TokenType::TOK_DOT) {
             std::string table_name = t[pos].value;
 

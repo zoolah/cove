@@ -93,6 +93,12 @@ namespace Tokenizer {
                 continue;
             }
 
+            if (c == ',') {
+                results.push_back(Token(TOK_COMMA));
+                pos++;
+                continue;
+            }
+
             if (c == '~' && source[pos + 1] == '=') {
                 results.push_back(Token(TOK_NOTEQ));
                 pos += 2;

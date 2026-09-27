@@ -9,6 +9,7 @@ Cove is a lightweight, custom stack-based programming language implemented in C+
 - comparisons: `== ~= < >`
 - conditionals: `if ... then ... end`
 - while loops: `while expression do ... end`
+- for loops: `for i = 0, i < 10, i = i + 1 do ... end`
 - logical chaining: `and`, `or`
 - string concatenation: `..`
 - tables with dot access: `profile.name`
@@ -60,7 +61,23 @@ while score < 100 do
     score = score + 10;
     print(score);
 end
+
+for i = 0, i < 5, i = i + 1 do
+    print("tick: " .. i);
+end
 ```
+
+## For loops
+
+Cove supports a C-style loop header with initializer, condition, and iterator update separated by commas:
+
+```cove
+for i = 0, i < 5, i = i + 1 do
+    print("iteration: " .. i);
+end
+```
+
+The loop initializes `i`, evaluates the condition before each pass, and runs the iterator expression after each iteration.
 
 ## Tables
 
@@ -110,6 +127,10 @@ end
 while score < 20 do
     score = score + 2;
     print("looping: " .. score);
+end
+
+for i = 0, i < 3, i = i + 1 do
+    print("round: " .. i);
 end
 ```
 
@@ -181,5 +202,4 @@ PRINT
 - Functions
 - Classes
 - More complex data types / table structure
-- for loops
 

@@ -79,7 +79,8 @@ enum TokenType {
 	TOK_CONCAT,// ..
 	TOK_LB,	   // {
 	TOK_RB,     // }
-	TOK_DOT
+	TOK_DOT,   // .
+	TOK_COMMA  // ,
 };
 
 struct Token {
