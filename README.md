@@ -1,0 +1,152 @@
+# Cove
+
+Cove is a lightweight, custom stack-based programming language implemented in C++ with Lua-like syntax
+
+## What it supports
+
+- `num` and `str` values
+- arithmetic: `+ - * / %`
+- comparisons: `== ~= < >`
+- conditionals: `if ... then ... end`
+- logical chaining: `and`, `or`
+- string concatenation: `..`
+- tables with dot access: `profile.name`
+
+## Quick start
+
+```bash
+cove.exe program.txt
+```
+
+The source is tokenized, compiled, and executed in the vm.
+
+## Syntax
+
+```cove
+num score = 42;
+str title = "Cove";
+
+print(score);
+print(title .. " is ready");
+
+num total = (10 + 5) * 2;
+
+if score > 10 and total < 100 then
+    print("ok");
+end
+```
+
+## Tables
+
+```cove
+tbl profile = {
+  name = "Ada";
+  role = "engineer";
+  level = 7;
+}
+
+print(profile.name);
+profile.role = "architect";
+print(profile.role);
+```
+
+## Full-feature example
+
+```cove
+num score = 10;
+num rounds = 3;
+num total = ((score * rounds) % 7) + (score / 2);
+
+str app = "Cove";
+str state = "ready";
+
+if score > 5 and rounds < 10 then
+    print(app .. " is " .. state);
+end
+
+tbl machine = {
+  name = "Ada";
+  phase = "compile";
+  level = 7;
+}
+
+if (score > 5 and rounds < 10) or (machine.level == 7) then
+    machine.phase = "live";
+    print(machine.name .. " :: " .. machine.phase);
+    print(total);
+    print(machine.level);
+
+    if machine.level ~= 7 then
+        print("unexpected");
+    end
+end
+```
+
+This covers everything the language supports: variable declarations, arithmetic, comparisons, branching, string building, and structured table data.
+
+## VM opcode reference
+
+The tokenizer & compiler turn readable code into a linear set made up of the following instructions:
+
+```text
+ADD      Pop a, pop b, push b + a
+SUB      Pop a, pop b, push b - a
+MUL      Pop a, pop b, push b * a
+DIV      Pop a, pop b, push b / a
+POP      Discard the top stack value
+PUSH     Push a literal value onto the stack
+PRINT    Pop a value and write it to stdout
+STORE    Pop a value and store it in the variable named by the instruction operand
+LOAD     Load the variable named by the operand and push it onto the stack
+NEQ      Pop a, pop b, push 1 if b != a, otherwise 0
+EQ       Pop a, pop b, push 1 if b == a, otherwise 0
+LT       Pop a, pop b, push 1 if b < a, otherwise 0
+GT       Pop a, pop b, push 1 if b > a, otherwise 0
+JZ       Pop a condition; if it is zero, jump to the operand address
+JNZ      Pop a condition; if it is nonzero, jump to the operand address
+JNE      Pop a, pop b; if b != a, jump to the operand address
+JE       Pop a, pop b; if b == a, jump to the operand address
+CONCAT   Pop a, pop b; push concatenated string b + a
+CT       Create a table with the given name in the table store
+STV      Pop value, pop table name, assign table[operand_key] = value
+LTV      Pop table name, load table[operand_key] and push it onto the stack
+```
+
+The set of opcodes is executed in order and uses the VM stack plus the variable & table stores.
+
+### Execution model
+
+- `PUSH` places literals or values at the top of the stack
+- arithmetic opcodes pop two operands and push one result back
+- `STORE` and `LOAD` work with the variable map by name
+- `JZ`, `JNZ`, `JE`, and `JNE` are control-flow instructions that use the program counter
+- `CT`, `STV`, and `LTV` manage named tables and keyed values
+- `CONCAT` is string-only and requires both operands to be strings
+
+### Example compilation
+
+```cove
+num x = 10;
+num y = 5;
+print(x + y);
+```
+
+This compiles to the following bytecode:
+
+```text
+PUSH 10
+STORE x
+PUSH 5
+STORE y
+LOAD x
+LOAD y
+ADD
+PRINT
+```
+
+## Soon to come:
+- Functions
+- Classes
+- More complex data types / table structure
+- Loops (for, while)
+
