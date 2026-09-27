@@ -6,17 +6,33 @@
 class Machine {
 private:
     Stack stack;
-    std::unordered_map<std::string, sv> variables;
-    std::unordered_map<std::string, std::unordered_map<std::string, sv>> tables;
+    std::vector<std::unordered_map<std::string, sv>> scopes;  // variables in scopes
+    std::unordered_map<std::string, std::unordered_map<std::string, sv>> gtables; // global tables
+
+    std::vector<uint64_t> call_stack; // return addresses
+    std::unordered_map<std::string, uint64_t> function_addresses; // maps func names to their entry points
     uint64_t pc = 0;
 
 public:
     void run(std::vector<Instruction> bc) {
         pc = 0;
+        call_stack.clear();
+        function_addresses.clear();
+        scopes.clear();
+        scopes.emplace_back(); 
+         
+        for (size_t i = 0; i < bc.size(); ++i) {
+            if (bc[i].op == FUNC) {
+                function_addresses[bc[i].operand.str] = i + 1;  // map each function start operator with its name to its address
+            }
+        }
 
         while (pc < bc.size()) {
             Instruction& instr = bc[pc];
             uint64_t next_pc = pc + 1;
+
+
+
 
 
             switch (instr.op) {
@@ -91,15 +107,22 @@ public:
                 }
                 case STORE: {
                     sv val = stack.pop();
-                    variables[instr.operand.str] = val;
+                    scopes.back()[instr.operand.str] = val; // store the value in the current scope (lowest)
                     break;
                 }
                 case LOAD: {
-                    auto it = variables.find(instr.operand.str);
-                    if (it == variables.end()) {
+                    bool found = false;
+                    for (auto it = scopes.rbegin(); it != scopes.rend(); ++it) { // search for variables to load from innermost to outermost, cant go deeper. 
+                        auto var = it->find(instr.operand.str);
+                        if (var != it->end()) {
+                            stack.push(var->second);
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
                         throw std::runtime_error("Undefined variable: " + instr.operand.str);
                     }
-                    stack.push(it->second);
                     break;
                 }
                 case EQ: {
@@ -272,11 +295,11 @@ public:
                 }
                 case CT: { // - create table     : creates an empty table with name of operand name
                     std::string tablename = instr.operand.str;
-                    if (tables.find(tablename) != tables.end()) {
+                    if (gtables.find(tablename) != gtables.end()) {
                         throw std::runtime_error("Attempt to redefine table: " + tablename);
                     }
                      
-                    tables[tablename] = {};
+                    gtables[tablename] = {};
 
                     break;
                 }
@@ -287,15 +310,15 @@ public:
 
                     std::string key = instr.operand.str;
 
-                    tables[tablename][key] = value;
+                    gtables[tablename][key] = value;
                     break;
                 }
                 case LTV: {  // - load table value : pops tablename from stack -> a, gets key from operand, pushes table.key to stack
                     std::string tablename = stack.pop().str;
                     std::string key = instr.operand.str;
 
-                    auto table_it = tables.find(tablename);
-                    if (table_it == tables.end()) {
+                    auto table_it = gtables.find(tablename);
+                    if (table_it == gtables.end()) {
                         throw std::runtime_error("Table not found: " + tablename);
                     }
                     if (table_it->second.find(key) == table_it->second.end()) {
@@ -305,7 +328,34 @@ public:
                     stack.push(table_it->second[key]);
                     break;
                 }
+                case FUNC: {
+                    // Marker instruction skipped by JMP
+                    break;
+                }
+                case CALL: {
+                    auto it = function_addresses.find(instr.operand.str);
+                    if (it == function_addresses.end()) {
+                        throw std::runtime_error("Undefined function: " + instr.operand.str);
+                    }
 
+                    scopes.emplace_back();       // add new scope level (we're going 1 level deeper when we call a function)
+                    call_stack.push_back(next_pc);
+                    next_pc = it->second;
+                    break;
+                }
+                case RET: {
+                    if (call_stack.empty()) {
+                        throw std::runtime_error("Call stack underflow on RET");
+                    }
+
+                    if (scopes.size() > 1) {
+                        scopes.pop_back();      // go up one scope level 
+                    }
+
+                    next_pc = call_stack.back(); // grab the most recent return address (from before func was called)
+                    call_stack.pop_back();       // remove it 
+                    break;
+                }
 
               
 

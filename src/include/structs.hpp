@@ -32,7 +32,10 @@ typedef enum {
 	CT,
 	STV,
 	LTV,
-	JMP
+	JMP,
+	FUNC, 
+	CALL, 
+	RET,
 } Opcode;
 
 

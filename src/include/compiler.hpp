@@ -1,6 +1,8 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <sstream>
+#include <iomanip>
 #include <cctype>
 #include "structs.hpp"
 #define isspace std::isspace
@@ -10,35 +12,84 @@
 namespace Compiler {
 
     inline void print_bytecode(const std::vector<Instruction>& bytecode) {
+        int indent = 0;
+        bool in_function = false;
+
+        auto format_number = [](double value) {
+            std::ostringstream oss;
+            oss << value;
+            std::string text = oss.str();
+            if (text.find('.') != std::string::npos) {
+                while (!text.empty() && text.back() == '0') text.pop_back();
+                if (!text.empty() && text.back() == '.') text.pop_back();
+            }
+            return text;
+        };
+
+        auto format_operand = [&](const sv& operand) {
+            if (operand.type == ValueType::NUMBER) {
+                return format_number(operand.num);
+            }
+            return operand.str;
+        };
+
         for (size_t i = 0; i < bytecode.size(); ++i) {
             const auto& instr = bytecode[i];
-            std::cout << i << ": ";
+            std::string label;
+            std::string operand_text;
+            bool has_operand = false;
 
             switch (instr.op) {
-            case PUSH:   std::cout << "PUSH\t" << (instr.operand.type == ValueType::NUMBER ? std::to_string(instr.operand.num) : instr.operand.str); break;
-            case POP:    std::cout << "POP"; break;
-            case ADD:    std::cout << "ADD"; break;
-            case SUB:    std::cout << "SUB"; break;
-            case MUL:    std::cout << "MUL"; break;
-            case DIV:    std::cout << "DIV"; break;
-            case PRINT:  std::cout << "PRINT"; break;
-            case STORE:  std::cout << "STORE\t" << instr.operand.str; break;
-            case LOAD:   std::cout << "LOAD\t" << instr.operand.str; break;
-            case EQ:     std::cout << "EQ"; break;
-            case LT:     std::cout << "LT"; break;
-            case GT:     std::cout << "GT"; break;
-            case NEQ:    std::cout << "NEQ"; break;
-            case JZ:     std::cout << "JZ\t" << instr.operand.num; break;
-            case JNZ:    std::cout << "JNZ\t" << instr.operand.num; break;
-            case JNE:    std::cout << "JNE\t" << instr.operand.num; break;
-            case JE:     std::cout << "JE\t" << instr.operand.num; break;
-            case CONCAT: std::cout << "CONCAT"; break;
-            case CT:     std::cout << "CT\t" << instr.operand.str; break; 
-            case STV:    std::cout << "STV\t" << instr.operand.str; break; 
-            case LTV:    std::cout << "LTV\t" << instr.operand.str; break; 
-            default:     std::cout << "UNKNOWN"; break;
+            case PUSH:   label = "PUSH"; operand_text = format_operand(instr.operand); has_operand = true; break;
+            case POP:    label = "POP"; break;
+            case ADD:    label = "ADD"; break;
+            case SUB:    label = "SUB"; break;
+            case MUL:    label = "MUL"; break;
+            case DIV:    label = "DIV"; break;
+            case MOD:    label = "MOD"; break;
+            case PRINT:  label = "PRINT"; break;
+            case STORE:  label = "STORE"; operand_text = instr.operand.str; has_operand = true; break;
+            case LOAD:   label = "LOAD"; operand_text = instr.operand.str; has_operand = true; break;
+            case EQ:     label = "EQ"; break;
+            case LT:     label = "LT"; break;
+            case GT:     label = "GT"; break;
+            case NEQ:    label = "NEQ"; break;
+            case JZ:     label = "JZ"; operand_text = format_operand(instr.operand); has_operand = true; break;
+            case JNZ:    label = "JNZ"; operand_text = format_operand(instr.operand); has_operand = true; break;
+            case JNE:    label = "JNE"; operand_text = format_operand(instr.operand); has_operand = true; break;
+            case JE:     label = "JE"; operand_text = format_operand(instr.operand); has_operand = true; break;
+            case JMP:    label = "JMP"; operand_text = format_operand(instr.operand); has_operand = true; break;
+            case CONCAT: label = "CONCAT"; break;
+            case CT:     label = "CT"; operand_text = instr.operand.str; has_operand = true; break;
+            case STV:    label = "STV"; operand_text = instr.operand.str; has_operand = true; break;
+            case LTV:    label = "LTV"; operand_text = instr.operand.str; has_operand = true; break;
+            case FUNC:   label = "FUNC"; operand_text = instr.operand.str; has_operand = true; indent = 2; in_function = true; break;
+            case CALL:   label = "CALL"; operand_text = instr.operand.str; has_operand = true; break;
+            case RET:    label = "RET"; break;
+            default:     label = "UNKNOWN"; break;
+            }
+
+            bool implicit_return_tail = in_function && instr.op == RET &&
+                i + 2 < bytecode.size() &&
+                bytecode[i + 1].op == PUSH &&
+                bytecode[i + 1].operand.type == ValueType::NUMBER &&
+                bytecode[i + 1].operand.num == 0.0 &&
+                bytecode[i + 2].op == RET;
+
+            std::cout << std::string(indent, ' ')
+                      << std::setw(2) << i << ": "
+                      << std::left << std::setw(8) << label;
+            if (has_operand) {
+                std::cout << " " << operand_text;
             }
             std::cout << "\n";
+
+            if (instr.op == RET) {
+                if (!implicit_return_tail) {
+                    indent = 0;
+                    in_function = false;
+                }
+            }
         }
     }
 
@@ -46,6 +97,8 @@ namespace Compiler {
         std::vector<Instruction> bytecode;
         std::vector<Token> rpn_tokens;
         std::vector<Token> op_stack;
+
+        std::unordered_map<size_t, std::vector<std::vector<Token>>> call_args;
 
         auto precedence = [](TokenType t) {
             if (t == TOK_MUL || t == TOK_DIV || t == TOK_MOD) return 3;
@@ -66,7 +119,49 @@ namespace Compiler {
 
                 std::string combined = tok.value + "." + infix_expr[i + 2].value;
                 rpn_tokens.push_back(Token(TOK_IDENTIFIER, combined));
-                i += 2; 
+                i += 2;
+            }
+            else if (tok.type == TOK_IDENTIFIER &&
+                i + 1 < infix_expr.size() &&
+                infix_expr[i + 1].type == TOK_LP) {
+
+                std::string funcname = tok.value;
+                size_t lp = i + 1;
+                size_t rp = lp + 1;
+                int depth = 1;
+                while (rp < infix_expr.size() && depth > 0) {
+                    if (infix_expr[rp].type == TOK_LP) depth++;
+                    else if (infix_expr[rp].type == TOK_RP) depth--;
+                    if (depth > 0) rp++;
+                }
+                if (depth != 0) {
+                    throw std::runtime_error("Missing closing parenthesis in function call to '" + funcname + "'");
+                }
+
+                std::vector<std::vector<Token>> args;
+                size_t arg_start = lp + 1;
+                if (arg_start < rp) {
+                    size_t current = arg_start;
+                    while (current <= rp) {
+                        size_t next = current;
+                        int nested = 0;
+                        while (next < rp) {
+                            if (infix_expr[next].type == TOK_LP) nested++;
+                            else if (infix_expr[next].type == TOK_RP) nested--;
+                            else if (infix_expr[next].type == TOK_COMMA && nested == 0) break;
+                            next++;
+                        }
+                        args.emplace_back(infix_expr.begin() + current, infix_expr.begin() + next);
+                        current = next + 1;
+                        if (next >= rp) break;
+                    }
+                }
+
+                size_t marker_index = rpn_tokens.size();
+                rpn_tokens.push_back(Token(TOK_IDENTIFIER, "CALL:" + funcname));
+                call_args[marker_index] = std::move(args);
+
+                i = rp; 
             }
             else if (tok.type == TOK_NUMBER || tok.type == TOK_IDENTIFIER || tok.type == TOK_STR) {
                 rpn_tokens.push_back(tok);
@@ -75,7 +170,8 @@ namespace Compiler {
                 tok.type == TOK_DIV || tok.type == TOK_MOD || tok.type == TOK_EQ ||
                 tok.type == TOK_NOTEQ || tok.type == TOK_LT || tok.type == TOK_GT ||
                 tok.type == TOK_AND || tok.type == TOK_OR || tok.type == TOK_CONCAT) {
-                while (!op_stack.empty() && op_stack.back().type != TOK_LP && precedence(op_stack.back().type) >= precedence(tok.type)) {
+                while (!op_stack.empty() && op_stack.back().type != TOK_LP &&
+                    precedence(op_stack.back().type) >= precedence(tok.type)) {
                     rpn_tokens.push_back(op_stack.back());
                     op_stack.pop_back();
                 }
@@ -97,7 +193,9 @@ namespace Compiler {
             op_stack.pop_back();
         }
 
-        for (const auto& tok : rpn_tokens) {
+        for (size_t idx = 0; idx < rpn_tokens.size(); ++idx) {
+            const auto& tok = rpn_tokens[idx];
+
             if (tok.type == TOK_NUMBER) {
                 bytecode.push_back(Instruction(PUSH, sv(std::stod(tok.value))));
             }
@@ -105,16 +203,27 @@ namespace Compiler {
                 bytecode.push_back(Instruction(PUSH, sv(tok.value)));
             }
             else if (tok.type == TOK_IDENTIFIER) {
-                size_t dot_pos = tok.value.find('.');
-                if (dot_pos != std::string::npos) {
-                    std::string table_name = tok.value.substr(0, dot_pos);
-                    std::string key_name = tok.value.substr(dot_pos + 1);
+                if (tok.value.size() > 5 && tok.value.substr(0, 5) == "CALL:") {
+                    std::string funcname = tok.value.substr(5);
+                    auto& args = call_args[idx];
 
-                    bytecode.push_back(Instruction(PUSH, sv(table_name)));
-                    bytecode.push_back(Instruction(LTV, sv(key_name)));
+                    for (auto it = args.rbegin(); it != args.rend(); ++it) {
+                        auto arg_bc = evaluate_expression(*it);
+                        bytecode.insert(bytecode.end(), arg_bc.begin(), arg_bc.end());
+                    }
+                    bytecode.push_back(Instruction(CALL, sv(funcname)));
                 }
                 else {
-                    bytecode.push_back(Instruction(LOAD, sv(tok.value)));
+                    size_t dot_pos = tok.value.find('.');
+                    if (dot_pos != std::string::npos) {
+                        std::string table_name = tok.value.substr(0, dot_pos);
+                        std::string key_name = tok.value.substr(dot_pos + 1);
+                        bytecode.push_back(Instruction(PUSH, sv(table_name)));
+                        bytecode.push_back(Instruction(LTV, sv(key_name)));
+                    }
+                    else {
+                        bytecode.push_back(Instruction(LOAD, sv(tok.value)));
+                    }
                 }
             }
             else {
@@ -157,8 +266,17 @@ namespace Compiler {
                 throw std::runtime_error("Invalid print statement syntax");
             }
 
+            size_t depth = 1;
             size_t rp_pos = pos + 2;
-            while (rp_pos < t.size() && t[rp_pos].type != TOK_RP) {
+            while (rp_pos < t.size() && depth > 0) {
+                if (t[rp_pos].type == TOK_LP) {
+                    depth++;
+                }
+                else if (t[rp_pos].type == TOK_RP) {
+                    depth--;
+                    if (depth == 0) break;
+                }
+                
                 rp_pos++;
             }
             if (rp_pos >= t.size()) {
@@ -463,6 +581,95 @@ namespace Compiler {
 
 
         } 
+        else if (curr.value == "function") {  // func definition
+            auto namepos = pos + 1;
+            std::string funcname = t[namepos].value;
+
+            auto lp_pos = namepos + 1;
+            if (t[lp_pos].type != TokenType::TOK_LP) {
+                throw std::runtime_error("Expected '(' after function declaration '" + funcname + "', but got '" + t[lp_pos].value + "'");
+            }
+
+            auto rp_pos = lp_pos + 1;
+            while (rp_pos < t.size() && t[rp_pos].type != TokenType::TOK_RP) {
+                rp_pos++;
+            }
+
+            std::vector<std::string> param_names;
+            for (size_t i = lp_pos + 1; i < rp_pos; ++i) {
+                if (t[i].type == TokenType::TOK_IDENTIFIER) {  // parse each argument name
+                    param_names.push_back(t[i].value);
+                }
+            }
+
+            size_t skip_jump_idx = bytecode.size();
+            bytecode.push_back(Instruction(JMP, 0.0)); // for jumping over code block so func code doesnt run without calling
+
+            bytecode.push_back(Instruction(FUNC, sv(funcname)));  // mark in bytecode where the func starts and map it to its name
+
+
+
+            for (auto it = param_names.rbegin(); it != param_names.rend(); ++it) {
+                bytecode.push_back(Instruction(STORE, sv(*it))); // pop arguments off the stack and store them (in reverse order so the caller reads them in the right order)
+            }
+
+
+            size_t block_pos = rp_pos + 1;
+            while (block_pos < t.size() && t[block_pos].value != "end") {
+                block_pos = compile_block(t, block_pos, bytecode);           // compile function contents
+            }
+
+            if (block_pos >= t.size() || t[block_pos].value != "end") {
+                throw std::runtime_error("Missing 'end' keyword for function '" + funcname + "'");
+            }
+
+            bytecode.push_back(Instruction(PUSH, 0));  // default return in case user doesnt put one
+            bytecode.push_back(Instruction(RET));
+
+            bytecode[skip_jump_idx].operand = sv((double)bytecode.size()); // fill in jump with the actual addr after the code block
+
+            return block_pos + 1;
+        }
+        else if (pos + 1 < t.size() && t[pos].type == TokenType::TOK_IDENTIFIER && t[pos + 1].type == TokenType::TOK_LP) {
+            std::string funcname = t[pos].value;
+
+            size_t lp_pos = pos + 1;
+            size_t rp_pos = lp_pos;
+            while (rp_pos < t.size() && t[rp_pos].type != TokenType::TOK_RP) {
+                rp_pos++;
+            }
+            if (rp_pos >= t.size()) {
+                throw std::runtime_error("Missing closing parenthesis for call to '" + funcname + "'");
+            }
+
+            size_t arg_start = lp_pos + 1;
+            int arg_count = 0;
+
+            if (arg_start < rp_pos) {
+                size_t current_comma = arg_start;
+                while (current_comma <= rp_pos) {
+                    size_t next_comma = current_comma;
+                    while (next_comma < rp_pos && t[next_comma].type != TOK_COMMA) {
+                        next_comma++;
+                    }
+
+                    std::vector<Token> arg_expr(t.begin() + current_comma, t.begin() + next_comma);
+                    auto arg_bytecode = evaluate_expression(arg_expr);
+                    bytecode.insert(bytecode.end(), arg_bytecode.begin(), arg_bytecode.end());     // write bytecode to evaluate each arg, then they get pushed to stack
+
+                    arg_count++;
+                    current_comma = next_comma + 1;
+                }
+            }
+
+            bytecode.push_back(Instruction(CALL, sv(funcname))); // call function (it will read the args off the stack)
+
+            size_t sc_pos = rp_pos + 1;
+            if (sc_pos < t.size() && t[sc_pos].type == TOK_SC) {
+                return sc_pos + 1;
+            }
+            return rp_pos + 1; 
+        }
         else if (t[pos].type == TokenType::TOK_IDENTIFIER && t[pos + 1].type == TokenType::TOK_DOT) {
             std::string table_name = t[pos].value;
 
@@ -517,6 +724,35 @@ namespace Compiler {
 
 
             return sc_pos + 1;
+        }
+        else if (curr.value == "return") {
+            Token next = t[pos + 1];
+
+            if (next.type == TokenType::TOK_SC) {
+                bytecode.push_back(Instruction(PUSH, 0)); // default return
+                bytecode.push_back(Instruction(RET));
+                return pos + 2;
+            }
+            else {
+
+                // find semicolon;
+                size_t sc_pos = pos + 1;
+                while (t[sc_pos].type != TokenType::TOK_SC) {
+                    sc_pos++;
+                }
+                
+
+                std::vector<Token> ret_expr(t.begin() + pos + 1, t.begin() + sc_pos);
+                auto ret_val_bytecode = evaluate_expression(ret_expr);
+                bytecode.insert(bytecode.end(), ret_val_bytecode.begin(), ret_val_bytecode.end());     // evaluate whatever we're returning, then it gets pushed to stack
+
+
+                bytecode.push_back(Instruction(RET));
+
+                return sc_pos + 1;
+
+            }
+
         }
         else {
             throw std::runtime_error("Unknown identifier: '" + curr.value + "' at token index " + std::to_string(pos));

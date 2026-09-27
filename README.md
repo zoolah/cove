@@ -14,6 +14,9 @@ Cove is a lightweight, custom stack-based programming language implemented in C+
 - string concatenation: `..`
 - tables with dot access: `profile.name`
 - variable reassignment after declaration: `varname = anyexpression;`
+- function declarations: `function name(arg1, arg2) ... end`
+- function calls: `name(value1, value2)`
+- nested argument expressions and nested parentheses inside function calls
 
 ## Build
 
@@ -65,6 +68,19 @@ end
 for i = 0, i < 5, i = i + 1 do
     print("tick: " .. i);
 end
+
+function greet(name)
+    print("Hello, " .. name);
+end
+
+greet("Ada");
+
+function add_and_print(a, b)
+    print(a + b);
+end
+
+add_and_print(10, 5);
+add_and_print((2 + 3), (8 / 2));
 ```
 
 ## For loops
@@ -78,6 +94,29 @@ end
 ```
 
 The loop initializes `i`, evaluates the condition before each pass, and runs the iterator expression after each iteration.
+
+## Functions
+
+Cove now supports simple function declarations and calls. Function bodies are written between `function ... end`, and a function is invoked by writing its name followed by a parenthesized argument list.
+
+```cove
+function greet(name)
+    print("hello, " .. name);
+end
+
+greet("Cove");
+
+greet("Ada");
+
+function sum_and_print(a, b)
+    print(a + b);
+end
+
+sum_and_print(10, 5);
+sum_and_print((4 * 3), (9 / 3));
+```
+
+Function calls can include nested expressions inside the argument list, and arguments are evaluated before the function body runs.
 
 ## Tables
 
@@ -102,6 +141,14 @@ num total = ((score * rounds) % 7) + (score / 2);
 
 str app = "Cove";
 str state = "ready";
+
+function greet_player(name, level)
+    print("Welcome, " .. name .. " (level " .. level .. ")");
+end
+
+function evaluate_rounds(current, bonus)
+    print(current + bonus);
+end
 
 if score > 5 and rounds < 10 then
     print(app .. " is " .. state);
@@ -129,12 +176,15 @@ while score < 20 do
     print("looping: " .. score);
 end
 
+greet_player("Ada", machine.level);
+evaluate_rounds(score, 5);
+
 for i = 0, i < 3, i = i + 1 do
     print("round: " .. i);
 end
 ```
 
-This covers everything the language supports: variable declarations, reassignment after declaration, arithmetic, comparisons, branching, loops, string building, and structured table data.
+This covers the current language capabilities: variable declarations, reassignment after declaration, arithmetic, comparisons, branching, loops, string building, tables, and function declarations/calls.
 
 ## VM opcode reference
 
@@ -164,6 +214,9 @@ CONCAT   Pop a, pop b; push concatenated string b + a
 CT       Create a table with the given name in the table store
 STV      Pop value, pop table name, assign table[operand_key] = value
 LTV      Pop table name, load table[operand_key] and push it onto the stack
+FUNC     Marks the start of a named function in the bytecode stream
+CALL     Calls a named function by lookup address, creating a new scope for arguments/locals
+RET      Returns execution to the previous call site
 ```
 
 The set of opcodes is executed in order and uses the VM stack plus the variable & table stores.
@@ -175,6 +228,7 @@ The set of opcodes is executed in order and uses the VM stack plus the variable 
 - `STORE` and `LOAD` work with the variable map by name
 - `JZ`, `JNZ`, `JE`, and `JNE` are control-flow instructions that use the program counter
 - `CT`, `STV`, and `LTV` manage named tables and keyed values
+- `FUNC`, `CALL`, and `RET` manage function scope and execution flow
 - `CONCAT` accepts strings and numbers, numeric operands are converted to strings before concatenation
 
 ### Example compilation
@@ -198,8 +252,8 @@ ADD
 PRINT
 ```
 
-## Soon to come:
-- Functions
+## Future ideas:
 - Classes
 - More complex data types / table structure
+- Explicit function return values and richer function semantics
 
