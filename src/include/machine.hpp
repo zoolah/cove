@@ -115,12 +115,19 @@ public:
                 }
                 case LOAD: {
                     bool found = false;
-                    for (auto it = scopes.rbegin(); it != scopes.rend(); ++it) { // search for variables to load from innermost to outermost, cant go deeper. 
+                    for (auto it = scopes.rbegin(); it != scopes.rend(); ++it) { // search for variables to load from innermost to outermost, cant go deeper.
                         auto var = it->find(instr.operand.str);
                         if (var != it->end()) {
                             stack.push(var->second);
                             found = true;
                             break;
+                        }
+                    }
+                    if (!found) {
+                        auto func_it = function_addresses.find(instr.operand.str);
+                        if (func_it != function_addresses.end()) {
+                            stack.push(sv(instr.operand.str, ValueType::FUNCTION));
+                            found = true;
                         }
                     }
                     if (!found) {
@@ -356,12 +363,26 @@ public:
                     break;
                 }
                 case CALL: {
-                    auto it = function_addresses.find(instr.operand.str);
-                    if (it == function_addresses.end()) {
-                        throw std::runtime_error("Undefined function: " + instr.operand.str);
+                    std::string callee_name;
+
+                    if (!instr.operand.str.empty()) {
+                        callee_name = instr.operand.str;
+                    }
+                    else {
+                        sv callee = stack.pop();
+                        if (callee.type == ValueType::FUNCTION || callee.type == ValueType::STRING) {
+                            callee_name = callee.str;
+                        }
+                        else {
+                            throw std::runtime_error("Attempt to call a non-function value");
+                        }
                     }
 
-                    
+                    auto it = function_addresses.find(callee_name);
+                    if (it == function_addresses.end()) {
+                        throw std::runtime_error("Undefined function: " + callee_name);
+                    }
+
                     scopes.emplace_back();       // add new scope level (we're going 1 level deeper when we call a function)
                     tablescopes.emplace_back();  // add new scope level for tables as well
                     call_stack.push_back(next_pc);

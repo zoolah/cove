@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <iostream>
 
-enum class ValueType { NUMBER, STRING };
+enum class ValueType { NUMBER, STRING, FUNCTION };
 
 
 
@@ -47,6 +47,12 @@ struct sv {
 
 	sv(double n) : type(ValueType::NUMBER), num(n) {}
 	sv(std::string s) : type(ValueType::STRING), str(s) {}
+	sv(std::string s, ValueType t) : type(t), str(s) {
+		if (t == ValueType::NUMBER) {
+			type = ValueType::NUMBER;
+			num = std::stod(s);
+		}
+	}
 	sv() : type(ValueType::NUMBER), num(0.0) {}
 };
 

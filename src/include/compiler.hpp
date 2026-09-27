@@ -30,6 +30,9 @@ namespace Compiler {
             if (operand.type == ValueType::NUMBER) {
                 return format_number(operand.num);
             }
+            if (operand.type == ValueType::FUNCTION) {
+                return "fn:" + operand.str;
+            }
             return operand.str;
         };
 
@@ -211,7 +214,18 @@ namespace Compiler {
                         auto arg_bc = evaluate_expression(*it);
                         bytecode.insert(bytecode.end(), arg_bc.begin(), arg_bc.end());
                     }
-                    bytecode.push_back(Instruction(CALL, sv(funcname)));
+
+                    if (funcname.find('.') != std::string::npos) {
+                        size_t dot_pos = funcname.find('.');
+                        std::string table_name = funcname.substr(0, dot_pos);
+                        std::string key_name = funcname.substr(dot_pos + 1);
+                        bytecode.push_back(Instruction(PUSH, sv(table_name)));
+                        bytecode.push_back(Instruction(LTV, sv(key_name)));
+                        bytecode.push_back(Instruction(CALL));
+                    }
+                    else {
+                        bytecode.push_back(Instruction(CALL, sv(funcname)));
+                    }
                 }
                 else {
                     size_t dot_pos = tok.value.find('.');
@@ -669,6 +683,59 @@ namespace Compiler {
                 return sc_pos + 1;
             }
             return rp_pos + 1; 
+        }
+        else if (curr.type == TokenType::TOK_IDENTIFIER &&
+                 pos + 3 < t.size() &&
+                 t[pos + 1].type == TokenType::TOK_DOT &&
+                 t[pos + 2].type == TokenType::TOK_IDENTIFIER &&
+                 t[pos + 3].type == TOK_LP) {
+            std::string table_name = curr.value;
+            std::string key_name = t[pos + 2].value;
+
+            size_t rp_pos = pos + 3;
+            int depth = 0;
+            while (rp_pos < t.size()) {
+                if (t[rp_pos].type == TOK_LP) depth++;
+                else if (t[rp_pos].type == TOK_RP) {
+                    depth--;
+                    if (depth == 0) {
+                        break;
+                    }
+                }
+                rp_pos++;
+            }
+            if (rp_pos >= t.size() || t[rp_pos].type != TOK_RP) {
+                throw std::runtime_error("Missing closing parenthesis in method call to '" + table_name + "." + key_name + "'");
+            }
+
+            size_t current = pos + 4;
+            while (current < rp_pos) {
+                size_t next = current;
+                int nested = 0;
+                while (next < rp_pos) {
+                    if (t[next].type == TOK_LP) nested++;
+                    else if (t[next].type == TOK_RP) nested--;
+                    else if (t[next].type == TOK_COMMA && nested == 0) break;
+                    next++;
+                }
+                if (current < next) {
+                    std::vector<Token> arg_expr(t.begin() + current, t.begin() + next);
+                    auto arg_bytecode = evaluate_expression(arg_expr);
+                    bytecode.insert(bytecode.end(), arg_bytecode.begin(), arg_bytecode.end());
+                }
+                current = next + 1;
+                if (next >= rp_pos) break;
+            }
+
+            bytecode.push_back(Instruction(PUSH, sv(table_name)));
+            bytecode.push_back(Instruction(LTV, sv(key_name)));
+            bytecode.push_back(Instruction(CALL));
+
+            size_t sc_pos = rp_pos + 1;
+            if (sc_pos < t.size() && t[sc_pos].type == TOK_SC) {
+                return sc_pos + 1;
+            }
+            return rp_pos + 1;
         }
         else if (t[pos].type == TokenType::TOK_IDENTIFIER && t[pos + 1].type == TokenType::TOK_DOT) {
             std::string table_name = t[pos].value;
