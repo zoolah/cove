@@ -12,13 +12,31 @@ Cove is a lightweight, custom stack-based programming language implemented in C+
 - string concatenation: `..`
 - tables with dot access: `profile.name`
 
+## Build
+
+From the project root:
+
+```bash
+cmake -S . -B build
+cmake --build build
+```
+
+To build in Release mode:
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release
+```
+
+The executable will be in `build/Release/cove.exe`
+
 ## Quick start
 
 ```bash
 cove.exe program.txt
 ```
 
-The source is tokenized, compiled, and executed in the vm.
+The source is tokenized, compiled, and executed in the VM.
 
 ## Syntax
 
