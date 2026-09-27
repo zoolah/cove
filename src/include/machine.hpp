@@ -7,7 +7,7 @@ class Machine {
 private:
     Stack stack;
     std::vector<std::unordered_map<std::string, sv>> scopes;  // variables in scopes
-    std::unordered_map<std::string, std::unordered_map<std::string, sv>> gtables; // global tables
+    std::vector < std::unordered_map<std::string, std::unordered_map<std::string, sv>>> tablescopes; // tables in scopes
 
     std::vector<uint64_t> call_stack; // return addresses
     std::unordered_map<std::string, uint64_t> function_addresses; // maps func names to their entry points
@@ -19,7 +19,10 @@ public:
         call_stack.clear();
         function_addresses.clear();
         scopes.clear();
-        scopes.emplace_back(); 
+        tablescopes.clear();         
+
+        scopes.emplace_back();        
+        tablescopes.emplace_back();   
          
         for (size_t i = 0; i < bc.size(); ++i) {
             if (bc[i].op == FUNC) {
@@ -295,37 +298,57 @@ public:
                 }
                 case CT: { // - create table     : creates an empty table with name of operand name
                     std::string tablename = instr.operand.str;
-                    if (gtables.find(tablename) != gtables.end()) {
+
+                    auto& current = tablescopes.back();                // get current table scope
+                    if (current.find(tablename) != current.end()) {    
                         throw std::runtime_error("Attempt to redefine table: " + tablename);
                     }
                      
-                    gtables[tablename] = {};
+                    current[tablename] = {};   
 
                     break;
                 }
                 case STV: { // - set table value : pops tablename from stack -> a, pops value from stack -> b, sets table key (from operand) to value
-                    sv value = stack.pop();                
-                    std::string tablename = stack.pop().str; 
-
-
+                    sv value = stack.pop();
+                    std::string tablename = stack.pop().str;
                     std::string key = instr.operand.str;
 
-                    gtables[tablename][key] = value;
+                    bool found = false;
+                    for (auto it = tablescopes.rbegin(); it != tablescopes.rend(); ++it) {
+                        auto table_it = it->find(tablename);
+                        if (table_it != it->end()) {
+                            table_it->second[key] = value;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (!found) {
+                        throw std::runtime_error("Table not found: " + tablename);
+                    }
                     break;
                 }
                 case LTV: {  // - load table value : pops tablename from stack -> a, gets key from operand, pushes table.key to stack
                     std::string tablename = stack.pop().str;
                     std::string key = instr.operand.str;
 
-                    auto table_it = gtables.find(tablename);
-                    if (table_it == gtables.end()) {
-                        throw std::runtime_error("Table not found: " + tablename);
-                    }
-                    if (table_it->second.find(key) == table_it->second.end()) {
-                        throw std::runtime_error("Key not found in table '" + tablename + "': " + key);
+                    bool found = false;
+                    for (auto it = tablescopes.rbegin(); it != tablescopes.rend(); ++it) {
+                        auto table_it = it->find(tablename);
+                        if (table_it != it->end()) {
+                            auto& table = table_it->second;
+                            if (table.find(key) == table.end()) {
+                                throw std::runtime_error("Key not found in table '" + tablename + "': " + key);
+                            }
+                            stack.push(table[key]);
+                            found = true;
+                            break;
+                        }
                     }
 
-                    stack.push(table_it->second[key]);
+                    if (!found) {
+                        throw std::runtime_error("Table not found: " + tablename);
+                    }
                     break;
                 }
                 case FUNC: {
@@ -338,7 +361,9 @@ public:
                         throw std::runtime_error("Undefined function: " + instr.operand.str);
                     }
 
+                    
                     scopes.emplace_back();       // add new scope level (we're going 1 level deeper when we call a function)
+                    tablescopes.emplace_back();  // add new scope level for tables as well
                     call_stack.push_back(next_pc);
                     next_pc = it->second;
                     break;
@@ -351,6 +376,11 @@ public:
                     if (scopes.size() > 1) {
                         scopes.pop_back();      // go up one scope level 
                     }
+
+                    if (tablescopes.size() > 1) {   
+                        tablescopes.pop_back(); // same for tables
+                    }
+
 
                     next_pc = call_stack.back(); // grab the most recent return address (from before func was called)
                     call_stack.pop_back();       // remove it 
