@@ -13,6 +13,7 @@ Cove is a lightweight, custom stack-based programming language implemented in C+
 - logical chaining: `and`, `or`
 - string concatenation: `..`
 - tables with dot access: `profile.name`
+- table scoping matches variable scoping, including nested function calls: inner tables shadow outer ones and leave scope when the call returns
 - variable reassignment after declaration: `varname = anyexpression;`
 - function declarations: `function name(arg1, arg2) ... end`
 - function calls: `name(value1, value2)`
@@ -120,6 +121,8 @@ Function calls can include nested expressions inside the argument list, and argu
 
 ## Tables
 
+Tables are scoped the same way as variables. When a function is called, Cove creates a fresh table scope for that call. Table names are searched from the innermost scope outward, so a nested table can be chosen before an outer one without overwriting it. Tables created in a function are no longer visible once that function returns.
+
 ```cove
 tbl profile = {
   name = "Ada";
@@ -130,7 +133,21 @@ tbl profile = {
 print(profile.name);
 profile.role = "architect";
 print(profile.role);
+
+function make_local_profile()
+    tbl profile = {
+        name = "Grace";
+        role = "inventor";
+    }
+
+    print(profile.name);
+end
+
+make_local_profile();
+print(profile.name);
 ```
+
+In this example, the table created inside `make_local_profile` is local to that call and does not replace the outer `profile` after the function returns.
 
 ## Full-feature example
 
@@ -227,8 +244,8 @@ The set of opcodes is executed in order and uses the VM stack plus the variable 
 - arithmetic opcodes pop two operands and push one result back
 - `STORE` and `LOAD` work with the variable map by name
 - `JZ`, `JNZ`, `JE`, and `JNE` are control-flow instructions that use the program counter
-- `CT`, `STV`, and `LTV` manage named tables and keyed values
-- `FUNC`, `CALL`, and `RET` manage function scope and execution flow
+- `CT`, `STV`, and `LTV` manage named tables and keyed values in the current scope chain
+- `FUNC`, `CALL`, and `RET` manage function scope and execution flow, including a fresh table scope per call frame
 - `CONCAT` accepts strings and numbers, numeric operands are converted to strings before concatenation
 
 ### Example compilation
