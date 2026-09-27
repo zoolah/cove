@@ -8,9 +8,11 @@ Cove is a lightweight, custom stack-based programming language implemented in C+
 - arithmetic: `+ - * / %`
 - comparisons: `== ~= < >`
 - conditionals: `if ... then ... end`
+- while loops: `while expression do ... end`
 - logical chaining: `and`, `or`
 - string concatenation: `..`
 - tables with dot access: `profile.name`
+- variable reassignment after declaration: `varname = anyexpression;`
 
 ## Build
 
@@ -44,6 +46,7 @@ The source is tokenized, compiled, and executed in the VM.
 num score = 42;
 str title = "Cove";
 
+score = score + 8;
 print(score);
 print(title .. " is ready");
 
@@ -51,6 +54,11 @@ num total = (10 + 5) * 2;
 
 if score > 10 and total < 100 then
     print("ok");
+end
+
+while score < 100 do
+    score = score + 10;
+    print(score);
 end
 ```
 
@@ -98,9 +106,14 @@ if (score > 5 and rounds < 10) or (machine.level == 7) then
         print("unexpected");
     end
 end
+
+while score < 20 do
+    score = score + 2;
+    print("looping: " .. score);
+end
 ```
 
-This covers everything the language supports: variable declarations, arithmetic, comparisons, branching, string building, and structured table data.
+This covers everything the language supports: variable declarations, reassignment after declaration, arithmetic, comparisons, branching, loops, string building, and structured table data.
 
 ## VM opcode reference
 
@@ -111,6 +124,7 @@ ADD      Pop a, pop b, push b + a
 SUB      Pop a, pop b, push b - a
 MUL      Pop a, pop b, push b * a
 DIV      Pop a, pop b, push b / a
+MOD      Pop a, pop b, push b % a
 POP      Discard the top stack value
 PUSH     Push a literal value onto the stack
 PRINT    Pop a value and write it to stdout
@@ -124,6 +138,7 @@ JZ       Pop a condition; if it is zero, jump to the operand address
 JNZ      Pop a condition; if it is nonzero, jump to the operand address
 JNE      Pop a, pop b; if b != a, jump to the operand address
 JE       Pop a, pop b; if b == a, jump to the operand address
+JMP      Unconditional jump to the operand address
 CONCAT   Pop a, pop b; push concatenated string b + a
 CT       Create a table with the given name in the table store
 STV      Pop value, pop table name, assign table[operand_key] = value
@@ -166,5 +181,5 @@ PRINT
 - Functions
 - Classes
 - More complex data types / table structure
-- Loops (for, while)
+- for loops
 

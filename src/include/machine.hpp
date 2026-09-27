@@ -249,6 +249,10 @@ public:
                     break;
 
                 }
+                case JMP: {
+                    next_pc = (uint64_t)instr.operand.num;
+                    break;
+                }
                 case CONCAT: {
                     sv A = stack.pop();
                     sv B = stack.pop();

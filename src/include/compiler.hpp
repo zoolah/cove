@@ -329,6 +329,39 @@ namespace Compiler {
 
             return search_pos + 1;
         }
+        else if (curr.value == "while") {
+            size_t do_pos = pos;
+            while (t[do_pos].value != "do") {
+                do_pos++;
+            }
+
+            if (do_pos > t.size()) {
+                throw std::runtime_error("Expected 'do' after 'while'");
+            }
+
+            std::vector<Token> infix_expr(t.begin() + pos + 1, t.begin() + do_pos);
+            auto expr_bytecode = evaluate_expression(infix_expr);
+
+            size_t expression_bytecode_index = bytecode.size(); // grab index of expression evaluation bytecode
+            bytecode.insert(bytecode.end(), expr_bytecode.begin(), expr_bytecode.end()); // bytecode for while ..... do block evaluation
+
+            size_t jump_idx = bytecode.size(); // index of jump if zero instruction
+            bytecode.push_back(Instruction(JZ, 0)); // add jump if zero 
+
+            size_t block_pos = do_pos + 1; // start code block at token right after the 'do'
+            while (block_pos < t.size() && t[block_pos].value != "end") { // stop at 'end'
+                block_pos = compile_block(t, block_pos, bytecode); // compile everything inside of it
+            }
+
+            // after the block inside the while statement runs, jump back and re-evaluate the condition to check if we need to run it again
+
+            bytecode.push_back(Instruction(JMP, expression_bytecode_index)); // jmps back to the evaluate + jz 
+
+            bytecode[jump_idx].operand = sv((double)bytecode.size()); // patch the jz with the position in bytecode after the loop
+
+            return block_pos + 1;
+
+        }
         else if (t[pos].type == TokenType::TOK_IDENTIFIER && t[pos + 1].type == TokenType::TOK_DOT) {
             std::string table_name = t[pos].value;
 
@@ -356,6 +389,31 @@ namespace Compiler {
             bytecode.insert(bytecode.end(), expr_bytecode.begin(), expr_bytecode.end());
 
             bytecode.push_back(Instruction(STV, sv(key_name)));
+
+            return sc_pos + 1;
+        }
+        else if (curr.type == TokenType::TOK_IDENTIFIER && t[pos + 1].type == TokenType::TOK_SEQ) {
+            // setting a variable's value
+
+            std::string var_name = curr.value;
+
+
+            // find end of expression (semicolon)
+            size_t sc_pos = pos;
+            while (t[sc_pos].type != TokenType::TOK_SC) {
+                sc_pos++;
+            }
+
+
+            // grab the whole value expression
+            std::vector<Token> infix_expr(t.begin() + pos + 2, t.begin() + sc_pos); 
+            auto expr_bytecode = evaluate_expression(infix_expr);
+            bytecode.insert(bytecode.end(), expr_bytecode.begin(), expr_bytecode.end()); 
+            // will evaluate then push to stack
+
+
+            bytecode.push_back(Instruction(STORE, var_name)); // now store it in the var 
+
 
             return sc_pos + 1;
         }

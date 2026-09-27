@@ -31,7 +31,8 @@ typedef enum {
 	CONCAT,
 	CT,
 	STV,
-	LTV
+	LTV,
+	JMP
 } Opcode;
 
 
