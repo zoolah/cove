@@ -257,11 +257,17 @@ public:
                     sv A = stack.pop();
                     sv B = stack.pop();
 
-                    if (A.type != ValueType::STRING || B.type != ValueType::STRING) {
-                        throw std::runtime_error("Concatenation (..) requires string operands");
-                    }
+                    auto to_string = [](sv value) -> std::string {
+                        if (value.type == ValueType::STRING) {
+                            return value.str;
+                        }
+                        if (value.type == ValueType::NUMBER) {
+                            return std::to_string(value.num);
+                        }
+                        throw std::runtime_error("Concatenation (..) requires string or number operands");
+                    };
 
-                    stack.push(sv(B.str + A.str));
+                    stack.push(sv(to_string(B) + to_string(A)));
                     break;
                 }
                 case CT: { // - create table     : creates an empty table with name of operand name

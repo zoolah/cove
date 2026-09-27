@@ -154,7 +154,7 @@ The set of opcodes is executed in order and uses the VM stack plus the variable 
 - `STORE` and `LOAD` work with the variable map by name
 - `JZ`, `JNZ`, `JE`, and `JNE` are control-flow instructions that use the program counter
 - `CT`, `STV`, and `LTV` manage named tables and keyed values
-- `CONCAT` is string-only and requires both operands to be strings
+- `CONCAT` accepts strings and numbers, numeric operands are converted to strings before concatenation
 
 ### Example compilation
 
