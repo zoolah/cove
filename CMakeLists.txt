@@ -7,11 +7,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_executable(cove
-    entry.cpp
+    src/entry.cpp
 )
 
 target_include_directories(cove PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/include
 )
 
 target_compile_features(cove PRIVATE cxx_std_17)

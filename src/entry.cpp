@@ -2,9 +2,9 @@
 #include <fstream>
 #include <sstream>
 #include <chrono>
-#include "machine.hpp"
-#include "compiler.hpp"
-#include "tokenizer.hpp"
+#include "include/machine.hpp"
+#include "include/compiler.hpp"
+#include "include/tokenizer.hpp"
 
 
 #define debug false
@@ -13,7 +13,7 @@ std::string read_file(const std::string& filepath) {
     std::ifstream file(filepath);
 
     if (!file.is_open()) {
-        throw std::runtime_error("Could not open file: " + filepath);
+        throw std::runtime_error("Couldn't open file: " + filepath);
     }
 
     std::stringstream buffer;
