@@ -36,6 +36,7 @@ typedef enum {
 	FUNC, 
 	CALL, 
 	RET,
+	INP
 } Opcode;
 
 

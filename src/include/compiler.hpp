@@ -97,10 +97,8 @@ namespace Compiler {
     }
 
     inline std::vector<Instruction> evaluate_expression(const std::vector<Token>& infix_expr) {
-        std::vector<Instruction> bytecode;
         std::vector<Token> rpn_tokens;
         std::vector<Token> op_stack;
-
         std::unordered_map<size_t, std::vector<std::vector<Token>>> call_args;
 
         auto precedence = [](TokenType t) {
@@ -112,51 +110,98 @@ namespace Compiler {
             return -2;
             };
 
+        auto parse_arguments = [&](size_t lp, size_t rp) {
+            std::vector<std::vector<Token>> args;
+            size_t current = lp + 1;
+
+            while (current < rp) {
+                size_t next = current;
+                int nested = 0;
+                while (next < rp) {
+                    if (infix_expr[next].type == TOK_LP) nested++;
+                    else if (infix_expr[next].type == TOK_RP) nested--;
+                    else if (infix_expr[next].type == TOK_COMMA && nested == 0) break;
+                    next++;
+                }
+                if (current < next) {
+                    args.emplace_back(infix_expr.begin() + static_cast<std::ptrdiff_t>(current),
+                        infix_expr.begin() + static_cast<std::ptrdiff_t>(next));
+                }
+                current = next + 1;
+                if (next >= rp) break;
+            }
+            return args;
+            };
+
         for (size_t i = 0; i < infix_expr.size(); ++i) {
             const auto& tok = infix_expr[i];
 
-            if (i + 3 < infix_expr.size() &&
+            bool is_input_call = (tok.value == "input") &&
+                (i + 1 < infix_expr.size()) &&
+                (infix_expr[i + 1].type == TOK_LP);
+
+
+            bool is_dotted_call = (i + 3 < infix_expr.size() &&
                 tok.type == TOK_IDENTIFIER &&
                 infix_expr[i + 1].type == TOK_DOT &&
                 infix_expr[i + 2].type == TOK_IDENTIFIER &&
-                infix_expr[i + 3].type == TOK_LP) {
+                infix_expr[i + 3].type == TOK_LP);
 
-                std::string funcname = tok.value + "." + infix_expr[i + 2].value;
-                size_t lp = i + 3;
-                size_t rp = lp + 1;
+            bool is_std_call = (tok.type == TOK_IDENTIFIER &&
+                i + 1 < infix_expr.size() &&
+                infix_expr[i + 1].type == TOK_LP);
+
+            if (is_input_call) { // catch the input function before assuming it was user defined, this will also stop users from overwriting it
+                float depth = 1;
+                size_t lp_pos = i + 1;
+                size_t cursor = lp_pos + 1;
+                while (cursor < infix_expr.size() && depth > 0) {
+                    if (infix_expr[cursor].type == TOK_LP) depth++;
+                    if (infix_expr[cursor].type == TOK_RP) depth--;
+
+                    if (depth == 0) break;
+                    cursor++;
+                }
+
+                size_t rp_pos = cursor;
+                auto args = parse_arguments(lp_pos, rp_pos);
+
+                if (args.size() != 1) throw std::runtime_error("Input expects 1 argument");
+
+                size_t token_index = rpn_tokens.size();
+                rpn_tokens.push_back(Token(TOK_IDENTIFIER, "INPUT"));
+                call_args[token_index] = std::move(args);
+
+                i = rp_pos;
+            }
+            else if (is_dotted_call || is_std_call) {
+                std::string funcname;
+                size_t lp, rp;
+
+                if (is_dotted_call) {
+                    funcname = tok.value + "." + infix_expr[i + 2].value;
+                    lp = i + 3;
+                }
+                else {
+                    funcname = tok.value;
+                    lp = i + 1;
+                }
+
+                rp = lp + 1;
                 int depth = 1;
                 while (rp < infix_expr.size() && depth > 0) {
                     if (infix_expr[rp].type == TOK_LP) depth++;
                     else if (infix_expr[rp].type == TOK_RP) depth--;
                     if (depth > 0) rp++;
                 }
+
                 if (depth != 0) {
                     throw std::runtime_error("Missing closing parenthesis in function call to '" + funcname + "'");
                 }
 
-                std::vector<std::vector<Token>> args;
-                size_t arg_start = lp + 1;
-                if (arg_start < rp) {
-                    size_t current = arg_start;
-                    while (current < rp) {
-                        size_t next = current;
-                        int nested = 0;
-                        while (next < rp) {
-                            if (infix_expr[next].type == TOK_LP) nested++;
-                            else if (infix_expr[next].type == TOK_RP) nested--;
-                            else if (infix_expr[next].type == TOK_COMMA && nested == 0) break;
-                            next++;
-                        }
-                        if (current < next) {
-                            args.emplace_back(infix_expr.begin() + static_cast<std::ptrdiff_t>(current),
-                                              infix_expr.begin() + static_cast<std::ptrdiff_t>(next));
-                        }
-                        current = next + 1;
-                        if (next >= rp) break;
-                    }
-                }
-
+                auto args = parse_arguments(lp, rp);
                 size_t marker_index = rpn_tokens.size();
+
                 rpn_tokens.push_back(Token(TOK_IDENTIFIER, "CALL:" + funcname));
                 call_args[marker_index] = std::move(args);
                 i = rp;
@@ -166,51 +211,8 @@ namespace Compiler {
                 infix_expr[i + 1].type == TOK_DOT &&
                 infix_expr[i + 2].type == TOK_IDENTIFIER) {
 
-                std::string combined = tok.value + "." + infix_expr[i + 2].value;
-                rpn_tokens.push_back(Token(TOK_IDENTIFIER, combined));
+                rpn_tokens.push_back(Token(TOK_IDENTIFIER, tok.value + "." + infix_expr[i + 2].value));
                 i += 2;
-            }
-            else if (tok.type == TOK_IDENTIFIER &&
-                i + 1 < infix_expr.size() &&
-                infix_expr[i + 1].type == TOK_LP) {
-
-                std::string funcname = tok.value;
-                size_t lp = i + 1;
-                size_t rp = lp + 1;
-                int depth = 1;
-                while (rp < infix_expr.size() && depth > 0) {
-                    if (infix_expr[rp].type == TOK_LP) depth++;
-                    else if (infix_expr[rp].type == TOK_RP) depth--;
-                    if (depth > 0) rp++;
-                }
-                if (depth != 0) {
-                    throw std::runtime_error("Missing closing parenthesis in function call to '" + funcname + "'");
-                }
-
-                std::vector<std::vector<Token>> args;
-                size_t arg_start = lp + 1;
-                if (arg_start < rp) {
-                    size_t current = arg_start;
-                    while (current <= rp) {
-                        size_t next = current;
-                        int nested = 0;
-                        while (next < rp) {
-                            if (infix_expr[next].type == TOK_LP) nested++;
-                            else if (infix_expr[next].type == TOK_RP) nested--;
-                            else if (infix_expr[next].type == TOK_COMMA && nested == 0) break;
-                            next++;
-                        }
-                        args.emplace_back(infix_expr.begin() + current, infix_expr.begin() + next);
-                        current = next + 1;
-                        if (next >= rp) break;
-                    }
-                }
-
-                size_t marker_index = rpn_tokens.size();
-                rpn_tokens.push_back(Token(TOK_IDENTIFIER, "CALL:" + funcname));
-                call_args[marker_index] = std::move(args);
-
-                i = rp; 
             }
             else if (tok.type == TOK_NUMBER || tok.type == TOK_IDENTIFIER || tok.type == TOK_STR) {
                 rpn_tokens.push_back(tok);
@@ -219,6 +221,7 @@ namespace Compiler {
                 tok.type == TOK_DIV || tok.type == TOK_MOD || tok.type == TOK_EQ ||
                 tok.type == TOK_NOTEQ || tok.type == TOK_LT || tok.type == TOK_GT ||
                 tok.type == TOK_AND || tok.type == TOK_OR || tok.type == TOK_CONCAT) {
+
                 while (!op_stack.empty() && op_stack.back().type != TOK_LP &&
                     precedence(op_stack.back().type) >= precedence(tok.type)) {
                     rpn_tokens.push_back(op_stack.back());
@@ -237,10 +240,13 @@ namespace Compiler {
                 if (!op_stack.empty()) op_stack.pop_back();
             }
         }
+
         while (!op_stack.empty()) {
             rpn_tokens.push_back(op_stack.back());
             op_stack.pop_back();
         }
+
+        std::vector<Instruction> bytecode;
 
         for (size_t idx = 0; idx < rpn_tokens.size(); ++idx) {
             const auto& tok = rpn_tokens[idx];
@@ -252,7 +258,7 @@ namespace Compiler {
                 bytecode.push_back(Instruction(PUSH, sv(tok.value)));
             }
             else if (tok.type == TOK_IDENTIFIER) {
-                if (tok.value.size() > 5 && tok.value.substr(0, 5) == "CALL:") {
+                if (tok.value.rfind("CALL:", 0) == 0) {
                     std::string funcname = tok.value.substr(5);
                     auto& args = call_args[idx];
 
@@ -261,25 +267,27 @@ namespace Compiler {
                         bytecode.insert(bytecode.end(), arg_bc.begin(), arg_bc.end());
                     }
 
-                    if (funcname.find('.') != std::string::npos) {
-                        size_t dot_pos = funcname.find('.');
-                        std::string table_name = funcname.substr(0, dot_pos);
-                        std::string key_name = funcname.substr(dot_pos + 1);
-                        bytecode.push_back(Instruction(PUSH, sv(table_name)));
-                        bytecode.push_back(Instruction(LTV, sv(key_name)));
+                    if (size_t dot_pos = funcname.find('.'); dot_pos != std::string::npos) {
+                        bytecode.push_back(Instruction(PUSH, sv(funcname.substr(0, dot_pos))));
+                        bytecode.push_back(Instruction(LTV, sv(funcname.substr(dot_pos + 1))));
                         bytecode.push_back(Instruction(CALL));
                     }
                     else {
                         bytecode.push_back(Instruction(CALL, sv(funcname)));
                     }
                 }
+                else if (tok.value == "INPUT") {
+                    auto& args = call_args[idx];
+
+                    auto argument_bytecode = evaluate_expression(args[0]);
+
+                    bytecode.insert(bytecode.end(), argument_bytecode.begin(), argument_bytecode.end());
+                    bytecode.push_back(Instruction(INP));
+                }
                 else {
-                    size_t dot_pos = tok.value.find('.');
-                    if (dot_pos != std::string::npos) {
-                        std::string table_name = tok.value.substr(0, dot_pos);
-                        std::string key_name = tok.value.substr(dot_pos + 1);
-                        bytecode.push_back(Instruction(PUSH, sv(table_name)));
-                        bytecode.push_back(Instruction(LTV, sv(key_name)));
+                    if (size_t dot_pos = tok.value.find('.'); dot_pos != std::string::npos) {
+                        bytecode.push_back(Instruction(PUSH, sv(tok.value.substr(0, dot_pos))));
+                        bytecode.push_back(Instruction(LTV, sv(tok.value.substr(dot_pos + 1))));
                     }
                     else {
                         bytecode.push_back(Instruction(LOAD, sv(tok.value)));
@@ -289,17 +297,17 @@ namespace Compiler {
             else {
                 Opcode vm_op;
                 switch (tok.type) {
-                case TOK_ADD:    vm_op = ADD; break;
-                case TOK_SUB:    vm_op = SUB; break;
-                case TOK_MUL:    vm_op = MUL; break;
-                case TOK_DIV:    vm_op = DIV; break;
-                case TOK_MOD:    vm_op = MOD; break;
-                case TOK_EQ:     vm_op = EQ;  break;
-                case TOK_LT:     vm_op = LT;  break;
-                case TOK_GT:     vm_op = GT;  break;
-                case TOK_NOTEQ:  vm_op = NEQ; break;
-                case TOK_AND:    vm_op = MUL; break;
-                case TOK_OR:     vm_op = ADD; break;
+                case TOK_ADD:    vm_op = ADD;    break;
+                case TOK_SUB:    vm_op = SUB;    break;
+                case TOK_MUL:    vm_op = MUL;    break;
+                case TOK_DIV:    vm_op = DIV;    break;
+                case TOK_MOD:    vm_op = MOD;    break;
+                case TOK_EQ:     vm_op = EQ;     break;
+                case TOK_LT:     vm_op = LT;     break;
+                case TOK_GT:     vm_op = GT;     break;
+                case TOK_NOTEQ:  vm_op = NEQ;    break;
+                case TOK_AND:    vm_op = MUL;    break;
+                case TOK_OR:     vm_op = ADD;    break;
                 case TOK_CONCAT: vm_op = CONCAT; break;
                 default: throw std::runtime_error("Unsupported operator");
                 }
@@ -689,6 +697,10 @@ namespace Compiler {
             bytecode[skip_jump_idx].operand = sv((double)bytecode.size()); // fill in jump with the actual addr after the code block
 
             return block_pos + 1;
+        }
+        else if (curr.value == "input") {
+            throw std::runtime_error("input() can only be used in an expression");
+
         }
         else if (pos + 1 < t.size() && t[pos].type == TokenType::TOK_IDENTIFIER && t[pos + 1].type == TokenType::TOK_LP) {
             std::string funcname = t[pos].value;

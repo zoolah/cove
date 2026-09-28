@@ -417,6 +417,27 @@ public:
                     break;
                 }
 
+                case INP: {
+                    // compiler evaluates the argument and pushes to stack right before this
+                    // so
+
+                    sv argument = stack.pop();
+
+                    std::cout << argument.str;
+
+                    std::string buf;
+
+                    std::cin >> buf;
+
+                    // set value's num and string value so it can be used as both
+                    sv val;
+                    val.str = buf;
+                    val.num = std::stod(buf);
+
+                    stack.push(val);
+                    
+                }
+
               
 
 

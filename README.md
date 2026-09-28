@@ -17,8 +17,9 @@ Cove is a lightweight, custom stack-based programming language implemented in C+
 - table scoping matches variable scoping, including nested function calls: inner tables shadow outer ones and leave scope when the call returns
 - variable reassignment after declaration: `varname = anyexpression;`
 - function declarations: `function name(arg1, arg2) ... end`
-- function calls: `name(value1, value2)`
+- function calls: `name(value1, value2)` and return values with `return expression`
 - nested argument expressions and nested parentheses inside function calls
+- numeric input with `input(prompt)`
 
 ## Build
 
@@ -44,46 +45,11 @@ The executable will be in `build/Release/cove.exe`
 cove.exe program.txt
 ```
 
-The source is tokenized, compiled, and executed in the VM.
+The source will be tokenized, compiled, and executed in the VM.
 
-## Syntax
 
-```cove
-num score = 42;
-str title = "Cove";
 
-score = score + 8;
-print(score);
-print(title .. " is ready");
-
-num total = (10 + 5) * 2;
-
-if score > 10 and total < 100 then
-    print("ok");
-end
-
-while score < 100 do
-    score = score + 10;
-    print(score);
-end
-
-for i = 0, i < 5, i = i + 1 do
-    print("tick: " .. i);
-end
-
-function greet(name)
-    print("Hello, " .. name);
-end
-
-greet("Ada");
-
-function add_and_print(a, b)
-    print(a + b);
-end
-
-add_and_print(10, 5);
-add_and_print((2 + 3), (8 / 2));
-```
+# Documentation
 
 ## For loops
 
@@ -99,7 +65,7 @@ The loop initializes `i`, evaluates the condition before each pass, and runs the
 
 ## Functions
 
-Cove now supports simple function declarations and calls. Function bodies are written between `function ... end`, and a function is invoked by writing its name followed by a parenthesized argument list.
+Function bodies are written between `function ... end`, and a function is called by writing its name followed by a parenthesized argument list.
 
 ```cove
 function greet(name)
@@ -107,18 +73,26 @@ function greet(name)
 end
 
 greet("Cove");
-
 greet("Ada");
 
-function sum_and_print(a, b)
-    print(a + b);
+function sum(a, b)
+    return a + b;
 end
 
-sum_and_print(10, 5);
-sum_and_print((4 * 3), (9 / 3));
+print(sum(10, 5));
+print(sum(4 * 3, 9 / 3));
 ```
 
-Function calls can include nested expressions inside the argument list, and arguments are evaluated before the function body runs.
+Function calls can include nested expressions inside the argument list, and arguments are evaluated before the function body runs. A function can return an expression with `return`, but if no such statement is written, it will return  `0`.
+
+## Input
+
+`input(prompt)` prints its single string prompt, reads from standard input, and converts that to a value that can be casted as a number or string. It can be used anywhere an expression is accepted:
+
+```cove
+num age = input("Enter your age: ");
+print(age + 1);
+```
 
 ## Tables
 
@@ -162,60 +136,6 @@ obj.fn("Ada");
 
 In this example, the table created inside `make_local_profile` is local to that call and does not replace the outer `profile` after the function returns. The `obj.fn(...)` call resolves the stored `fn` field to a function value, then calls it with the provided arguments.
 
-## Full-feature example
-
-```cove
-num score = 10;
-num rounds = 3;
-num total = ((score * rounds) % 7) + (score / 2);
-
-str app = "Cove";
-str state = "ready";
-
-function greet_player(name, level)
-    print("Welcome, " .. name .. " (level " .. level .. ")");
-end
-
-function evaluate_rounds(current, bonus)
-    print(current + bonus);
-end
-
-if score > 5 and rounds < 10 then
-    print(app .. " is " .. state);
-end
-
-tbl machine = {
-  name = "Ada";
-  phase = "compile";
-  level = 7;
-}
-
-if (score > 5 and rounds < 10) or (machine.level == 7) then
-    machine.phase = "live";
-    print(machine.name .. " :: " .. machine.phase);
-    print(total);
-    print(machine.level);
-
-    if machine.level ~= 7 then
-        print("unexpected");
-    end
-end
-
-while score < 20 do
-    score = score + 2;
-    print("looping: " .. score);
-end
-
-greet_player("Ada", machine.level);
-evaluate_rounds(score, 5);
-
-for i = 0, i < 3, i = i + 1 do
-    print("round: " .. i);
-end
-```
-
-This covers the current language capabilities: variable declarations, reassignment after declaration, arithmetic, comparisons, branching, loops, string building, tables, and function declarations/calls.
-
 ## VM opcode reference
 
 The tokenizer & compiler turn readable code into a linear set made up of the following instructions:
@@ -247,20 +167,9 @@ LTV      Pop table name, load table[operand_key] and push it onto the stack
 FUNC     Marks the start of a named function in the bytecode stream
 CALL     Calls a named function by lookup address, creating a new scope for arguments/locals
 RET      Returns execution to the previous call site
+INP      Pop a prompt, read a numeric token from stdin, and push the value
 ```
 
-The set of opcodes is executed in order and uses the VM stack plus the variable & table stores.
-
-### Execution model
-
-- `PUSH` places literals or values at the top of the stack
-- arithmetic opcodes pop two operands and push one result back
-- `STORE` and `LOAD` work with the variable map by name
-- function values can be loaded from names or from table entries and then called via `CALL`
-- `JZ`, `JNZ`, `JE`, and `JNE` are control-flow instructions that use the program counter
-- `CT`, `STV`, and `LTV` manage named tables and keyed values in the current scope chain
-- `FUNC`, `CALL`, and `RET` manage function scope and execution flow, including a fresh table scope per call frame
-- `CONCAT` accepts strings and numbers, numeric operands are converted to strings before concatenation
 
 ### Example compilation
 
