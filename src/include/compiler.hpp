@@ -115,7 +115,53 @@ namespace Compiler {
         for (size_t i = 0; i < infix_expr.size(); ++i) {
             const auto& tok = infix_expr[i];
 
-            if (i + 2 < infix_expr.size() &&
+            if (i + 3 < infix_expr.size() &&
+                tok.type == TOK_IDENTIFIER &&
+                infix_expr[i + 1].type == TOK_DOT &&
+                infix_expr[i + 2].type == TOK_IDENTIFIER &&
+                infix_expr[i + 3].type == TOK_LP) {
+
+                std::string funcname = tok.value + "." + infix_expr[i + 2].value;
+                size_t lp = i + 3;
+                size_t rp = lp + 1;
+                int depth = 1;
+                while (rp < infix_expr.size() && depth > 0) {
+                    if (infix_expr[rp].type == TOK_LP) depth++;
+                    else if (infix_expr[rp].type == TOK_RP) depth--;
+                    if (depth > 0) rp++;
+                }
+                if (depth != 0) {
+                    throw std::runtime_error("Missing closing parenthesis in function call to '" + funcname + "'");
+                }
+
+                std::vector<std::vector<Token>> args;
+                size_t arg_start = lp + 1;
+                if (arg_start < rp) {
+                    size_t current = arg_start;
+                    while (current < rp) {
+                        size_t next = current;
+                        int nested = 0;
+                        while (next < rp) {
+                            if (infix_expr[next].type == TOK_LP) nested++;
+                            else if (infix_expr[next].type == TOK_RP) nested--;
+                            else if (infix_expr[next].type == TOK_COMMA && nested == 0) break;
+                            next++;
+                        }
+                        if (current < next) {
+                            args.emplace_back(infix_expr.begin() + static_cast<std::ptrdiff_t>(current),
+                                              infix_expr.begin() + static_cast<std::ptrdiff_t>(next));
+                        }
+                        current = next + 1;
+                        if (next >= rp) break;
+                    }
+                }
+
+                size_t marker_index = rpn_tokens.size();
+                rpn_tokens.push_back(Token(TOK_IDENTIFIER, "CALL:" + funcname));
+                call_args[marker_index] = std::move(args);
+                i = rp;
+            }
+            else if (i + 2 < infix_expr.size() &&
                 tok.type == TOK_IDENTIFIER &&
                 infix_expr[i + 1].type == TOK_DOT &&
                 infix_expr[i + 2].type == TOK_IDENTIFIER) {

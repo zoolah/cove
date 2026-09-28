@@ -1,6 +1,8 @@
 #pragma once
 #include <sstream>
 #include <unordered_map>
+#include <cmath>
+#include <iostream>
 #include "structs.hpp"
 
 class Machine {
@@ -101,7 +103,12 @@ public:
                 case PRINT: {
                     sv v = stack.pop();
                     if (v.type == ValueType::NUMBER) {
-                        std::cout << v.num << std::endl;
+                        if (std::trunc(v.num) == v.num) {
+                            std::cout << static_cast<long long>(v.num) << std::endl;
+                        }
+                        else {
+                            std::cout << v.num << std::endl;
+                        }
                     }
                     else if (v.type == ValueType::STRING) {
                         std::cout << v.str << std::endl;
@@ -394,6 +401,8 @@ public:
                         throw std::runtime_error("Call stack underflow on RET");
                     }
 
+                    sv result = stack.pop();
+
                     if (scopes.size() > 1) {
                         scopes.pop_back();      // go up one scope level 
                     }
@@ -402,9 +411,9 @@ public:
                         tablescopes.pop_back(); // same for tables
                     }
 
-
                     next_pc = call_stack.back(); // grab the most recent return address (from before func was called)
                     call_stack.pop_back();       // remove it 
+                    stack.push(result);
                     break;
                 }
 
