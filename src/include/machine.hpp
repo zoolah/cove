@@ -432,7 +432,14 @@ public:
                     // set value's num and string value so it can be used as both
                     sv val;
                     val.str = buf;
-                    val.num = std::stod(buf);
+                    try {
+                        val.num = std::stod(buf); 
+                    }
+                    catch (...) {
+                        val.type = ValueType::STRING; // cant be casted to a number
+                        //
+                    }
+                    
 
                     stack.push(val);
                     
