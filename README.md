@@ -51,6 +51,28 @@ The source will be tokenized, compiled, and executed in the VM.
 
 # Documentation
 
+## Variables & Arithmetics
+
+```
+num x = 5;
+num y = 10;
+
+num z = x + y;
+
+print(z / 5);
+
+str name = "Adam";
+print(name);
+
+num a = 5;
+str b = "5";
+
+print(a+b);
+```
+
+Numerical variables are declared with `num x = value`, string variables are declared with `str x = value`. 
+Arithmetic operations, if presented with a string value, will attempt to cast it to a numerical value before throwing an error, so `print(a+b)` above casts b to a number and adds it to a. No error.
+
 ## If statements 
 
 ```cove
