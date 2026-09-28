@@ -107,7 +107,17 @@ public:
                             std::cout << static_cast<long long>(v.num) << std::endl;
                         }
                         else {
-                            std::cout << v.num << std::endl;
+                            std::ostringstream oss;
+                            oss << std::fixed << std::setprecision(15) << v.num;
+                            std::string s = oss.str();
+
+                            s.erase(s.find_last_not_of('0') + 1, std::string::npos);
+
+                            if (!s.empty() && s.back() == '.') {
+                                s.pop_back();
+                            }
+
+                            std::cout << s << std::endl;
                         }
                     }
                     else if (v.type == ValueType::STRING) {
@@ -302,7 +312,21 @@ public:
                             return value.str;
                         }
                         if (value.type == ValueType::NUMBER) {
-                            return std::to_string(value.num);
+                            if (std::trunc(value.num) == value.num) {
+                                return std::to_string(static_cast<long long>(value.num));
+                            }
+
+                            std::ostringstream oss;
+                            oss << std::fixed << std::setprecision(15) << value.num;
+                            std::string s = oss.str();
+
+                            s.erase(s.find_last_not_of('0') + 1, std::string::npos);
+
+                            if (!s.empty() && s.back() == '.') {
+                                s.pop_back();
+                            }
+
+                            return s;
                         }
                         throw std::runtime_error("Concatenation (..) requires string or number operands");
                     };
