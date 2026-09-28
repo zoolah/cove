@@ -26,14 +26,14 @@ namespace Compiler {
             return text;
         };
 
-        auto format_operand = [&](const sv& operand) {
-            if (operand.type == ValueType::NUMBER) {
-                return format_number(operand.num);
+        auto format_operand = [&](const Value& operand) {
+            if (operand.is_number()) {
+                return format_number(operand.as_number());
             }
-            if (operand.type == ValueType::FUNCTION) {
-                return "fn:" + operand.str;
+            if (operand.is_function()) {
+                return "fn:" + operand.as_function();
             }
-            return operand.str;
+            return operand.as_string();
         };
 
         for (size_t i = 0; i < bytecode.size(); ++i) {
@@ -51,8 +51,8 @@ namespace Compiler {
             case DIV:    label = "DIV"; break;
             case MOD:    label = "MOD"; break;
             case PRINT:  label = "PRINT"; break;
-            case STORE:  label = "STORE"; operand_text = instr.operand.str; has_operand = true; break;
-            case LOAD:   label = "LOAD"; operand_text = instr.operand.str; has_operand = true; break;
+            case STORE:  label = "STORE"; operand_text = instr.operand.as_string(); has_operand = true; break;
+            case LOAD:   label = "LOAD"; operand_text = instr.operand.as_string(); has_operand = true; break;
             case EQ:     label = "EQ"; break;
             case LT:     label = "LT"; break;
             case GT:     label = "GT"; break;
@@ -63,11 +63,11 @@ namespace Compiler {
             case JE:     label = "JE"; operand_text = format_operand(instr.operand); has_operand = true; break;
             case JMP:    label = "JMP"; operand_text = format_operand(instr.operand); has_operand = true; break;
             case CONCAT: label = "CONCAT"; break;
-            case CT:     label = "CT"; operand_text = instr.operand.str; has_operand = true; break;
-            case STV:    label = "STV"; operand_text = instr.operand.str; has_operand = true; break;
-            case LTV:    label = "LTV"; operand_text = instr.operand.str; has_operand = true; break;
-            case FUNC:   label = "FUNC"; operand_text = instr.operand.str; has_operand = true; indent = 2; in_function = true; break;
-            case CALL:   label = "CALL"; operand_text = instr.operand.str; has_operand = true; break;
+            case CT:     label = "CT"; operand_text = instr.operand.as_string(); has_operand = true; break;
+            case STV:    label = "STV"; operand_text = instr.operand.as_string(); has_operand = true; break;
+            case LTV:    label = "LTV"; operand_text = instr.operand.as_string(); has_operand = true; break;
+            case FUNC:   label = "FUNC"; operand_text = instr.operand.as_string(); has_operand = true; indent = 2; in_function = true; break;
+            case CALL:   label = "CALL"; operand_text = instr.operand.as_string(); has_operand = true; break;
             case RET:    label = "RET"; break;
             default:     label = "UNKNOWN"; break;
             }
@@ -75,8 +75,8 @@ namespace Compiler {
             bool implicit_return_tail = in_function && instr.op == RET &&
                 i + 2 < bytecode.size() &&
                 bytecode[i + 1].op == PUSH &&
-                bytecode[i + 1].operand.type == ValueType::NUMBER &&
-                bytecode[i + 1].operand.num == 0.0 &&
+                bytecode[i + 1].operand.is_number() &&
+                bytecode[i + 1].operand.as_number() == 0.0 &&
                 bytecode[i + 2].op == RET;
 
             std::cout << std::string(indent, ' ')
@@ -252,10 +252,10 @@ namespace Compiler {
             const auto& tok = rpn_tokens[idx];
 
             if (tok.type == TOK_NUMBER) {
-                bytecode.push_back(Instruction(PUSH, sv(std::stod(tok.value))));
+                bytecode.push_back(Instruction(PUSH, Value(std::stod(tok.value))));
             }
             else if (tok.type == TOK_STR) {
-                bytecode.push_back(Instruction(PUSH, sv(tok.value)));
+                bytecode.push_back(Instruction(PUSH, Value(tok.value)));
             }
             else if (tok.type == TOK_IDENTIFIER) {
                 if (tok.value.rfind("CALL:", 0) == 0) {
@@ -268,12 +268,12 @@ namespace Compiler {
                     }
 
                     if (size_t dot_pos = funcname.find('.'); dot_pos != std::string::npos) {
-                        bytecode.push_back(Instruction(PUSH, sv(funcname.substr(0, dot_pos))));
-                        bytecode.push_back(Instruction(LTV, sv(funcname.substr(dot_pos + 1))));
+                        bytecode.push_back(Instruction(PUSH, Value(funcname.substr(0, dot_pos))));
+                        bytecode.push_back(Instruction(LTV, Value(funcname.substr(dot_pos + 1))));
                         bytecode.push_back(Instruction(CALL));
                     }
                     else {
-                        bytecode.push_back(Instruction(CALL, sv(funcname)));
+                        bytecode.push_back(Instruction(CALL, Value(funcname)));
                     }
                 }
                 else if (tok.value == "INPUT") {
@@ -286,11 +286,11 @@ namespace Compiler {
                 }
                 else {
                     if (size_t dot_pos = tok.value.find('.'); dot_pos != std::string::npos) {
-                        bytecode.push_back(Instruction(PUSH, sv(tok.value.substr(0, dot_pos))));
-                        bytecode.push_back(Instruction(LTV, sv(tok.value.substr(dot_pos + 1))));
+                        bytecode.push_back(Instruction(PUSH, Value(tok.value.substr(0, dot_pos))));
+                        bytecode.push_back(Instruction(LTV, Value(tok.value.substr(dot_pos + 1))));
                     }
                     else {
-                        bytecode.push_back(Instruction(LOAD, sv(tok.value)));
+                        bytecode.push_back(Instruction(LOAD, Value(tok.value)));
                     }
                 }
             }
@@ -352,7 +352,7 @@ namespace Compiler {
             }
 
             if (rp_pos == pos + 3 && t[pos + 2].type == TOK_STR) {
-                bytecode.push_back(Instruction(PUSH, sv(t[pos + 2].value)));
+                bytecode.push_back(Instruction(PUSH, Value(t[pos + 2].value)));
             }
             else {
                 std::vector<Token> infix_expr(t.begin() + pos + 2, t.begin() + rp_pos);
@@ -395,7 +395,7 @@ namespace Compiler {
             auto expr_bytecode = evaluate_expression(infix_expr);
 
             bytecode.insert(bytecode.end(), expr_bytecode.begin(), expr_bytecode.end());
-            bytecode.push_back(Instruction(STORE, sv(var_name)));
+            bytecode.push_back(Instruction(STORE, Value(var_name)));
 
             return sc_pos + 1;
         }
@@ -425,7 +425,7 @@ namespace Compiler {
             auto expr_bytecode = evaluate_expression(infix_expr);
 
             bytecode.insert(bytecode.end(), expr_bytecode.begin(), expr_bytecode.end());
-            bytecode.push_back(Instruction(STORE, sv(var_name)));
+            bytecode.push_back(Instruction(STORE, Value(var_name)));
 
             return sc_pos + 1;
         }
@@ -444,7 +444,7 @@ namespace Compiler {
             bytecode.insert(bytecode.end(), expr_bytecode.begin(), expr_bytecode.end());
 
             size_t jump_idx = bytecode.size();
-            bytecode.push_back(Instruction(JZ, sv(0.0))); // dummy jump if zero
+            bytecode.push_back(Instruction(JZ, Value(0.0))); // dummy jump if zero
 
             size_t block_pos = thenpos + 1;
             while (block_pos < t.size() && t[block_pos].value != "end") {
@@ -455,7 +455,7 @@ namespace Compiler {
                 throw std::runtime_error("Missing 'end' keyword for if statement");
             }
 
-            bytecode[jump_idx].operand = sv((double)bytecode.size());
+            bytecode[jump_idx].operand = Value((double)bytecode.size());
 
             return block_pos + 1; // get past 'end'
         }
@@ -475,7 +475,7 @@ namespace Compiler {
                 throw std::runtime_error("Expected '{' after '=' in table declaration for '" + table_name + "', but found '" + t[lb_pos].value + "'");
             }
 
-            bytecode.push_back(Instruction(CT, sv(table_name)));
+            bytecode.push_back(Instruction(CT, Value(table_name)));
 
             size_t search_pos = lb_pos + 1;
             while (t[search_pos].type != TokenType::TOK_RB) {
@@ -502,13 +502,13 @@ namespace Compiler {
                     sc_pos++;
                 }
 
-                bytecode.push_back(Instruction(PUSH, sv(table_name)));
+                bytecode.push_back(Instruction(PUSH, Value(table_name)));
 
                 std::vector<Token> infix_expr(t.begin() + search_pos + 2, t.begin() + sc_pos);
                 auto expr_bytecode = evaluate_expression(infix_expr);
                 bytecode.insert(bytecode.end(), expr_bytecode.begin(), expr_bytecode.end());
 
-                bytecode.push_back(Instruction(STV, sv(keyname)));
+                bytecode.push_back(Instruction(STV, Value(keyname)));
 
                 search_pos = sc_pos + 1;
             }
@@ -543,7 +543,7 @@ namespace Compiler {
 
             bytecode.push_back(Instruction(JMP, expression_bytecode_index)); // jmps back to the evaluate + jz 
 
-            bytecode[jump_idx].operand = sv((double)bytecode.size()); // patch the jz with the position in bytecode after the loop
+            bytecode[jump_idx].operand = Value((double)bytecode.size()); // patch the jz with the position in bytecode after the loop
 
             return block_pos + 1;
 
@@ -580,7 +580,7 @@ namespace Compiler {
 
             // this pushes the value of the initializer expression to the stack
 
-            bytecode.push_back(Instruction(STORE, varname)); // store that value in the initializer variable name (x)
+            bytecode.push_back(Instruction(STORE, Value(varname))); // store that value in the initializer variable name (x)
             
             // IMPORTANT -> this will be a scope-only variable soon (not accessible in scopes above it) but it'll be global for now
 
@@ -643,7 +643,7 @@ namespace Compiler {
             bytecode.push_back(Instruction(JMP, condition_bytecode_pos));
 
 
-            bytecode[jze_pos].operand = sv((double)bytecode.size()); // patch jze so it knows to jump all the way after all the code if the condition evaluates to false
+            bytecode[jze_pos].operand = Value((double)bytecode.size()); // patch jze so it knows to jump all the way after all the code if the condition evaluates to false
 
             return endpos + 1;
 
@@ -673,12 +673,12 @@ namespace Compiler {
             size_t skip_jump_idx = bytecode.size();
             bytecode.push_back(Instruction(JMP, 0.0)); // for jumping over code block so func code doesnt run without calling
 
-            bytecode.push_back(Instruction(FUNC, sv(funcname)));  // mark in bytecode where the func starts and map it to its name
+            bytecode.push_back(Instruction(FUNC, Value(funcname)));  // mark in bytecode where the func starts and map it to its name
 
 
 
             for (auto it = param_names.rbegin(); it != param_names.rend(); ++it) {
-                bytecode.push_back(Instruction(STORE, sv(*it))); // pop arguments off the stack and store them (in reverse order so the caller reads them in the right order)
+                bytecode.push_back(Instruction(STORE, Value(*it))); // pop arguments off the stack and store them (in reverse order so the caller reads them in the right order)
             }
 
 
@@ -694,7 +694,7 @@ namespace Compiler {
             bytecode.push_back(Instruction(PUSH, 0));  // default return in case user doesnt put one
             bytecode.push_back(Instruction(RET));
 
-            bytecode[skip_jump_idx].operand = sv((double)bytecode.size()); // fill in jump with the actual addr after the code block
+            bytecode[skip_jump_idx].operand = Value((double)bytecode.size()); // fill in jump with the actual addr after the code block
 
             return block_pos + 1;
         }
@@ -749,7 +749,7 @@ namespace Compiler {
                 if (next >= rp_pos) break;
             }
 
-            bytecode.push_back(Instruction(CALL, sv(funcname))); // call function (it will read the args off the stack)
+            bytecode.push_back(Instruction(CALL, Value(funcname))); // call function (it will read the args off the stack)
 
             size_t sc_pos = rp_pos + 1;
             if (sc_pos < t.size() && t[sc_pos].type == TOK_SC) {
@@ -800,8 +800,8 @@ namespace Compiler {
                 if (next >= rp_pos) break;
             }
 
-            bytecode.push_back(Instruction(PUSH, sv(table_name)));
-            bytecode.push_back(Instruction(LTV, sv(key_name)));
+            bytecode.push_back(Instruction(PUSH, Value(table_name)));
+            bytecode.push_back(Instruction(LTV, Value(key_name)));
             bytecode.push_back(Instruction(CALL));
 
             size_t sc_pos = rp_pos + 1;
@@ -830,13 +830,13 @@ namespace Compiler {
                 sc_pos++;
             }
 
-            bytecode.push_back(Instruction(PUSH, sv(table_name)));
+            bytecode.push_back(Instruction(PUSH, Value(table_name)));
 
             std::vector<Token> infix_expr(t.begin() + pos + 4, t.begin() + sc_pos);
             auto expr_bytecode = evaluate_expression(infix_expr);
             bytecode.insert(bytecode.end(), expr_bytecode.begin(), expr_bytecode.end());
 
-            bytecode.push_back(Instruction(STV, sv(key_name)));
+            bytecode.push_back(Instruction(STV, Value(key_name)));
 
             return sc_pos + 1;
         }

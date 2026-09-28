@@ -8,8 +8,8 @@
 class Machine {
 private:
     Stack stack;
-    std::vector<std::unordered_map<std::string, sv>> scopes;  // variables in scopes
-    std::vector < std::unordered_map<std::string, std::unordered_map<std::string, sv>>> tablescopes; // tables in scopes
+    std::vector<std::unordered_map<std::string, Value>> scopes;  // variables in scopes
+    std::vector < std::unordered_map<std::string, std::unordered_map<std::string, Value>>> tablescopes; // tables in scopes
 
     std::vector<uint64_t> call_stack; // return addresses
     std::unordered_map<std::string, uint64_t> function_addresses; // maps func names to their entry points
@@ -28,7 +28,7 @@ public:
          
         for (size_t i = 0; i < bc.size(); ++i) {
             if (bc[i].op == FUNC) {
-                function_addresses[bc[i].operand.str] = i + 1;  // map each function start operator with its name to its address
+                function_addresses[bc[i].operand.as_string()] = i + 1;  // map each function start operator with its name to its address
             }
         }
 
@@ -46,69 +46,69 @@ public:
                     break;
                 }
                 case ADD: {
-                    sv A = stack.pop();
-                    if (A.type != ValueType::NUMBER) throw std::runtime_error("ADD requires numbers");
+                    Value A = stack.pop();
+                    if (!A.is_number()) throw std::runtime_error("ADD requires numbers");
 
-                    sv B = stack.pop();
-                    if (B.type != ValueType::NUMBER) throw std::runtime_error("ADD requires numbers");
+                    Value B = stack.pop();
+                    if (!B.is_number()) throw std::runtime_error("ADD requires numbers");
 
-                    stack.push(sv(B.num + A.num));
+                    stack.push(Value(B.as_number() + A.as_number()));
                     break;
                 }
                 case SUB: {
-                    sv A = stack.pop();
-                    if (A.type != ValueType::NUMBER) throw std::runtime_error("SUB requires numbers");
+                    Value A = stack.pop();
+                    if (!A.is_number()) throw std::runtime_error("SUB requires numbers");
 
-                    sv B = stack.pop();
-                    if (B.type != ValueType::NUMBER) throw std::runtime_error("SUB requires numbers");
+                    Value B = stack.pop();
+                    if (!B.is_number()) throw std::runtime_error("SUB requires numbers");
 
-                    stack.push(sv(B.num - A.num));
+                    stack.push(Value(B.as_number() - A.as_number()));
                     break;
                 }
                 case MUL: {
-                    sv A = stack.pop();
-                    if (A.type != ValueType::NUMBER) throw std::runtime_error("MUL requires numbers");
+                    Value A = stack.pop();
+                    if (!A.is_number()) throw std::runtime_error("MUL requires numbers");
 
-                    sv B = stack.pop();
-                    if (B.type != ValueType::NUMBER) throw std::runtime_error("MUL requires numbers");
+                    Value B = stack.pop();
+                    if (!B.is_number()) throw std::runtime_error("MUL requires numbers");
 
-                    stack.push(sv(B.num * A.num));
+                    stack.push(Value(B.as_number() * A.as_number()));
                     break;
                 }
                 case DIV: {
-                    sv A = stack.pop();
-                    if (A.type != ValueType::NUMBER) throw std::runtime_error("DIV requires numbers");
+                    Value A = stack.pop();
+                    if (!A.is_number()) throw std::runtime_error("DIV requires numbers");
 
-                    sv B = stack.pop();
-                    if (B.type != ValueType::NUMBER) throw std::runtime_error("DIV requires numbers");
+                    Value B = stack.pop();
+                    if (!B.is_number()) throw std::runtime_error("DIV requires numbers");
 
-                    if (A.num == 0) throw std::runtime_error("Division by zero");
+                    if (A.as_number() == 0) throw std::runtime_error("Division by zero");
 
-                    stack.push(sv(B.num / A.num));
+                    stack.push(Value(B.as_number() / A.as_number()));
                     break;
                 }
                 case MOD: {
-                    sv A = stack.pop();
-                    if (A.type != ValueType::NUMBER) throw std::runtime_error("MOD requires numbers");
+                    Value A = stack.pop();
+                    if (!A.is_number()) throw std::runtime_error("MOD requires numbers");
 
-                    sv B = stack.pop();
-                    if (B.type != ValueType::NUMBER) throw std::runtime_error("MOD requires numbers");
+                    Value B = stack.pop();
+                    if (!B.is_number()) throw std::runtime_error("MOD requires numbers");
 
-                    double remainder = std::fmod(B.num, A.num);
+                    double remainder = std::fmod(B.as_number(), A.as_number());
 
-                    stack.push(remainder);
+                    stack.push(Value(remainder));
                     break;
 
                 }
                 case PRINT: {
-                    sv v = stack.pop();
-                    if (v.type == ValueType::NUMBER) {
-                        if (std::trunc(v.num) == v.num) {
-                            std::cout << static_cast<long long>(v.num) << std::endl;
+                    Value v = stack.pop();
+                    if (v.is_number()) {
+                        if (std::trunc(v.as_number()) == v.as_number()) {
+                            std::cout << static_cast<long long>(v.as_number()) << std::endl;
                         }
                         else {
                             std::ostringstream oss;
-                            oss << std::fixed << std::setprecision(15) << v.num;
+                            oss << std::fixed << std::setprecision(15) << v.as_number();
                             std::string s = oss.str();
 
                             s.erase(s.find_last_not_of('0') + 1, std::string::npos);
@@ -120,20 +120,20 @@ public:
                             std::cout << s << std::endl;
                         }
                     }
-                    else if (v.type == ValueType::STRING) {
-                        std::cout << v.str << std::endl;
+                    else if (v.is_string()) {
+                        std::cout << v.as_string() << std::endl;
                     }
                     break;
                 }
                 case STORE: {
-                    sv val = stack.pop();
-                    scopes.back()[instr.operand.str] = val; // store the value in the current scope (lowest)
+                    Value val = stack.pop();
+                    scopes.back()[instr.operand.as_string()] = val; // store the value in the current scope (lowest)
                     break;
                 }
                 case LOAD: {
                     bool found = false;
                     for (auto it = scopes.rbegin(); it != scopes.rend(); ++it) { // search for variables to load from innermost to outermost, cant go deeper.
-                        auto var = it->find(instr.operand.str);
+                        auto var = it->find(instr.operand.as_string());
                         if (var != it->end()) {
                             stack.push(var->second);
                             found = true;
@@ -141,35 +141,35 @@ public:
                         }
                     }
                     if (!found) {
-                        auto func_it = function_addresses.find(instr.operand.str);
+                        auto func_it = function_addresses.find(instr.operand.as_string());
                         if (func_it != function_addresses.end()) {
-                            stack.push(sv(instr.operand.str, ValueType::FUNCTION));
+                            stack.push(Value::function(instr.operand.as_string()));
                             found = true;
                         }
                     }
                     if (!found) {
-                        throw std::runtime_error("Undefined variable: " + instr.operand.str);
+                        throw std::runtime_error("Undefined variable: " + instr.operand.as_string());
                     }
                     break;
                 }
                 case EQ: {
-                    sv a = stack.pop();
-                    sv b = stack.pop();
+                    Value a = stack.pop();
+                    Value b = stack.pop();
 
-                    if (a.type == ValueType::NUMBER && b.type == ValueType::NUMBER) {
-                        if (a.num == b.num) {
-                            stack.push(1.0);
+                    if (a.is_number() && b.is_number()) {
+                        if (a.as_number() == b.as_number()) {
+                            stack.push(Value(0.0));
                         }
                         else {
-                            stack.push(0.0); 
+                            stack.push(Value(1.0));
                         }
                     }
-                    else if (a.type == ValueType::STRING && b.type == ValueType::STRING) {
-                        if (a.str == b.str) {
-                            stack.push(1.0);
+                    else if (a.is_string() && b.is_string()) {
+                        if (a.as_string() == b.as_string()) {
+                            stack.push(Value(0.0));
                         }
                         else {
-                            stack.push(0.0); 
+                            stack.push(Value(1.0));
                         }
                     }
                     else {
@@ -178,23 +178,23 @@ public:
                     break;
                 }
                 case NEQ: {
-                    sv a = stack.pop();
-                    sv b = stack.pop();
+                    Value a = stack.pop();
+                    Value b = stack.pop();
 
-                    if (a.type == ValueType::NUMBER && b.type == ValueType::NUMBER) {
-                        if (a.num == b.num) {
-                            stack.push(0.0);
+                    if (a.is_number() && b.is_number()) {
+                        if (a.as_number() == b.as_number()) {
+                            stack.push(Value(0.0));
                         }
                         else {
-                            stack.push(1.0);
+                            stack.push(Value(1.0));
                         }
                     }
-                    else if (a.type == ValueType::STRING && b.type == ValueType::STRING) {
-                        if (a.str == b.str) {
-                            stack.push(0.0);
+                    else if (a.is_string() && b.is_string()) {
+                        if (a.as_string() == b.as_string()) {
+                            stack.push(Value(0.0));
                         }
                         else {
-                            stack.push(1.0);
+                            stack.push(Value(1.0));
                         }
                     }
                     else {
@@ -203,74 +203,74 @@ public:
                     break;
                 }
                 case LT: {
-                    sv a = stack.pop();
-                    sv b = stack.pop();
-                    if (a.type != ValueType::NUMBER || b.type != ValueType::NUMBER) {
+                    Value a = stack.pop();
+                    Value b = stack.pop();
+                    if (!a.is_number() || !b.is_number()) {
                         throw std::runtime_error("Error: Attempt to compare non-number with <");
                     }
 
                     // b is lower in the stack so its the first one
                     // if b < a 
-                    if (b.num < a.num) {
-                        stack.push(1.0);
+                    if (b.as_number() < a.as_number()) {
+                        stack.push(Value(1.0));
                     }
                     else {
-                        stack.push(0.0);
+                        stack.push(Value(0.0));
                     }
 
                     break;
 
                 }
                 case GT: {
-                    sv a = stack.pop();
-                    sv b = stack.pop();
-                    if (a.type != ValueType::NUMBER || b.type != ValueType::NUMBER) {
+                    Value a = stack.pop();
+                    Value b = stack.pop();
+                    if (!a.is_number() || !b.is_number()) {
                         throw std::runtime_error("Error: Attempt to compare non-number with >");
                     }
                     // if b > a
 
-                    if (b.num > a.num) {
-                        stack.push(1.0);
+                    if (b.as_number() > a.as_number()) {
+                        stack.push(Value(1.0));
                     }
                     else {
-                        stack.push(0.0);
+                        stack.push(Value(0.0));
                     }
                     break;
                 }
                 case JZ: {
-                    sv condition_value = stack.pop();
-                    if (condition_value.type != ValueType::NUMBER) {
+                    Value condition_value = stack.pop();
+                    if (!condition_value.is_number()) {
                         throw std::runtime_error("JZ requires a number condition");
                     }
 
-                    if (condition_value.num == 0.0) {
-                        next_pc = (uint64_t)instr.operand.num; 
+                    if (condition_value.as_number() == 0.0) {
+                        next_pc = (uint64_t)instr.operand.as_number();
                     }
                     break;
                 }
                 case JNZ: {
-                    sv condition_value = stack.pop();
-                    if (condition_value.type != ValueType::NUMBER) {
+                    Value condition_value = stack.pop();
+                    if (!condition_value.is_number()) {
                         throw std::runtime_error("JNZ requires a number condition");
                     }
 
-                    if (condition_value.num != 0.0) {
-                        next_pc = (uint64_t)instr.operand.num;
+                    if (condition_value.as_number() != 0.0) {
+                        next_pc = (uint64_t)instr.operand.as_number();
                     }
                     break;
                 }
                 case JE: {
-                    sv a = stack.pop();
-                    sv b = stack.pop();
+                    Value a = stack.pop();
+                    Value b = stack.pop();
 
-                    if (a.type == ValueType::NUMBER && b.type == ValueType::NUMBER) {
-                        if (a.num == b.num) {
-                            next_pc = (uint64_t)instr.operand.num;
+                    if (a.is_number() && b.is_number()) {
+                        if (a.as_number() == b.as_number()) {
+                            next_pc = (uint64_t)instr.operand.as_number();
                         }
                     }
-                    else if (a.type == ValueType::STRING && b.type == ValueType::STRING) {
-                        if (a.str == b.str) {
-                            next_pc = (uint64_t)instr.operand.num;
+                    else if (a.is_string() && b.is_string()) {
+                        if (a.as_string() == b.as_string()) {
+                            next_pc = (uint64_t)instr.operand.as_number();
                         }
                     }
                     else {
@@ -280,17 +280,17 @@ public:
 
                 }
                 case JNE: {
-                    sv a = stack.pop();
-                    sv b = stack.pop();
+                    Value a = stack.pop();
+                    Value b = stack.pop();
 
-                    if (a.type == ValueType::NUMBER && b.type == ValueType::NUMBER) {
-                        if (a.num != b.num) {
-                            next_pc = (uint64_t)instr.operand.num;
+                    if (a.is_number() && b.is_number()) {
+                        if (a.as_number() != b.as_number()) {
+                            next_pc = (uint64_t)instr.operand.as_number();
                         }
                     }
-                    else if (a.type == ValueType::STRING && b.type == ValueType::STRING) {
-                        if (a.str != b.str) {
-                            next_pc = (uint64_t)instr.operand.num;
+                    else if (a.is_string() && b.is_string()) {
+                        if (a.as_string() != b.as_string()) {
+                            next_pc = (uint64_t)instr.operand.as_number();
                         }
                     }
                     else {
@@ -300,24 +300,24 @@ public:
 
                 }
                 case JMP: {
-                    next_pc = (uint64_t)instr.operand.num;
+                    next_pc = (uint64_t)instr.operand.as_number();
                     break;
                 }
                 case CONCAT: {
-                    sv A = stack.pop();
-                    sv B = stack.pop();
+                    Value A = stack.pop();
+                    Value B = stack.pop();
 
-                    auto to_string = [](sv value) -> std::string {
-                        if (value.type == ValueType::STRING) {
-                            return value.str;
+                    auto to_string = [](Value value) -> std::string {
+                        if (value.is_string()) {
+                            return value.as_string();
                         }
-                        if (value.type == ValueType::NUMBER) {
-                            if (std::trunc(value.num) == value.num) {
-                                return std::to_string(static_cast<long long>(value.num));
+                        if (value.is_number()) {
+                            if (std::trunc(value.as_number()) == value.as_number()) {
+                                return std::to_string(static_cast<long long>(value.as_number()));
                             }
 
                             std::ostringstream oss;
-                            oss << std::fixed << std::setprecision(15) << value.num;
+                            oss << std::fixed << std::setprecision(15) << value.as_number();
                             std::string s = oss.str();
 
                             s.erase(s.find_last_not_of('0') + 1, std::string::npos);
@@ -331,11 +331,11 @@ public:
                         throw std::runtime_error("Concatenation (..) requires string or number operands");
                     };
 
-                    stack.push(sv(to_string(B) + to_string(A)));
+                    stack.push(Value(to_string(B) + to_string(A)));
                     break;
                 }
                 case CT: { // - create table     : creates an empty table with name of operand name
-                    std::string tablename = instr.operand.str;
+                    std::string tablename = instr.operand.as_string();
 
                     auto& current = tablescopes.back();                // get current table scope
                     if (current.find(tablename) != current.end()) {    
@@ -347,9 +347,9 @@ public:
                     break;
                 }
                 case STV: { // - set table value : pops tablename from stack -> a, pops value from stack -> b, sets table key (from operand) to value
-                    sv value = stack.pop();
-                    std::string tablename = stack.pop().str;
-                    std::string key = instr.operand.str;
+                    Value value = stack.pop();
+                    std::string tablename = stack.pop().as_string();
+                    std::string key = instr.operand.as_string();
 
                     bool found = false;
                     for (auto it = tablescopes.rbegin(); it != tablescopes.rend(); ++it) {
@@ -367,8 +367,8 @@ public:
                     break;
                 }
                 case LTV: {  // - load table value : pops tablename from stack -> a, gets key from operand, pushes table.key to stack
-                    std::string tablename = stack.pop().str;
-                    std::string key = instr.operand.str;
+                    std::string tablename = stack.pop().as_string();
+                    std::string key = instr.operand.as_string();
 
                     bool found = false;
                     for (auto it = tablescopes.rbegin(); it != tablescopes.rend(); ++it) {
@@ -396,13 +396,16 @@ public:
                 case CALL: {
                     std::string callee_name;
 
-                    if (!instr.operand.str.empty()) {
-                        callee_name = instr.operand.str;
+                    if (instr.operand.is_string() && !instr.operand.as_string().empty()) {
+                        callee_name = instr.operand.as_string();
                     }
                     else {
-                        sv callee = stack.pop();
-                        if (callee.type == ValueType::FUNCTION || callee.type == ValueType::STRING) {
-                            callee_name = callee.str;
+                        Value callee = stack.pop();
+                        if (callee.is_function()) {
+                            callee_name = callee.as_function();
+                        }
+                        else if (callee.is_string()) {
+                            callee_name = callee.as_string();
                         }
                         else {
                             throw std::runtime_error("Attempt to call a non-function value");
@@ -425,7 +428,7 @@ public:
                         throw std::runtime_error("Call stack underflow on RET");
                     }
 
-                    sv result = stack.pop();
+                    Value result = stack.pop();
 
                     if (scopes.size() > 1) {
                         scopes.pop_back();      // go up one scope level 
@@ -445,27 +448,16 @@ public:
                     // compiler evaluates the argument and pushes to stack right before this
                     // so
 
-                    sv argument = stack.pop();
+                    Value argument = stack.pop();
 
-                    std::cout << argument.str;
+                    std::cout << argument.as_string();
 
                     std::string buf;
 
                     std::cin >> buf;
 
                     // set value's num and string value so it can be used as both
-                    sv val;
-                    val.str = buf;
-                    try {
-                        val.num = std::stod(buf); 
-                    }
-                    catch (...) {
-                        val.type = ValueType::STRING; // cant be casted to a number
-                        //
-                    }
-                    
-
-                    stack.push(val);
+                    stack.push(Value(buf));
                     
                 }
 

@@ -5,10 +5,6 @@
 #include <stdexcept>
 #include <iostream>
 
-enum class ValueType { NUMBER, STRING, FUNCTION };
-
-
-
 typedef enum {
 	ADD,
 	SUB,
@@ -41,28 +37,40 @@ typedef enum {
 
 
 
-struct sv {
-	ValueType type;
-	double num = 0.0; // ints and floats both use double
-	std::string str = "";
+struct FunctionReference {
+	std::string name;
+};
 
-	sv(double n) : type(ValueType::NUMBER), num(n) {}
-	sv(std::string s) : type(ValueType::STRING), str(s) {}
-	sv(std::string s, ValueType t) : type(t), str(s) {
-		if (t == ValueType::NUMBER) {
-			type = ValueType::NUMBER;
-			num = std::stod(s);
-		}
+class Value {
+private:
+	std::variant<double, std::string, FunctionReference> data_;
+
+public:
+	Value() : data_(0.0) {}
+	Value(double number) : data_(number) {}
+	Value(std::string text) : data_(std::move(text)) {}
+
+	static Value function(std::string name) {
+		Value value;
+		value.data_ = FunctionReference{ std::move(name) };
+		return value;
 	}
-	sv() : type(ValueType::NUMBER), num(0.0) {}
+
+	bool is_number() const { return std::holds_alternative<double>(data_); }
+	bool is_string() const { return std::holds_alternative<std::string>(data_); }
+	bool is_function() const { return std::holds_alternative<FunctionReference>(data_); }
+
+	double as_number() const { return std::get<double>(data_); }
+	const std::string& as_string() const { return std::get<std::string>(data_); }
+	const std::string& as_function() const { return std::get<FunctionReference>(data_).name; }
 };
 
 
 struct Instruction {
 	Opcode op;
-	sv operand; 
+	Value operand;
 
-	Instruction(Opcode o, sv v = sv((uint64_t)0)) : op(o), operand(v) {}
+	Instruction(Opcode o, Value v = Value()) : op(o), operand(std::move(v)) {}
 };
 
 
@@ -104,18 +112,18 @@ struct Token {
 
 class Stack {
 private:
-	std::vector<sv> data_;
+	std::vector<Value> data_;
 
 public:
-	void push(sv value) {
+	void push(Value value) {
 		data_.push_back(std::move(value));
 	}
 
-	sv pop() {
+	Value pop() {
 		if (data_.empty()) {
 			throw std::runtime_error("Stack underflow");
 		}
-		sv value = std::move(data_.back());
+		Value value = std::move(data_.back());
 		data_.pop_back();
 		return value;
 	}

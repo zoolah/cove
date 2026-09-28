@@ -19,7 +19,7 @@ Cove is a lightweight, custom stack-based programming language implemented in C+
 - function declarations: `function name(arg1, arg2) ... end`
 - function calls: `name(value1, value2)` and return values with `return expression`
 - nested argument expressions and nested parentheses inside function calls
-- numeric input with `input(prompt)`
+- string input with `input(prompt)`
 
 ## Build
 
@@ -126,11 +126,11 @@ Function calls can include nested expressions inside the argument list, and argu
 
 ## Input
 
-`input(prompt)` prints its single string prompt, reads from standard input, and converts that to a value that can be casted as a number or string. It can be used anywhere an expression is accepted:
+`input(prompt)` prints its string prompt, reads one token from standard input, and returns it as a string. Cove does not implicitly convert input strings to numbers, so using an input result in arithmetic raises a runtime error.
 
 ```cove
-num age = input("Enter your age: ");
-print(age + 1);
+str name = input("What is your name? ");
+print("Hello, " .. name);
 ```
 
 ## Tables
