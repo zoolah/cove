@@ -51,6 +51,29 @@ The source will be tokenized, compiled, and executed in the VM.
 
 # Documentation
 
+## If statements 
+
+```cove
+num score = 42;
+
+if score > 10 then
+    print("high score");
+end
+```
+
+## While loops
+
+A `while` loop evaluates its condition before every iteration and stops when the condition becomes false. 
+
+```cove
+num count = 0;
+
+while count < 3 do
+    print(count);
+    count = count + 1;
+end
+```
+
 ## For loops
 
 Cove supports a C-style loop header with initializer, condition, and iterator update separated by commas:
@@ -191,107 +214,3 @@ LOAD y
 ADD
 PRINT
 ```
-
-# PERFORMANCE
-
-The following script demonstrates how Cove's VM handles recursion, arithmetics, memory allocation, and control flow.
-
-
-```cove
-print("--- COVE VM STRESS TEST ---");
-
-tbl config = {
-    iterations = 25000;
-    seed = 42;
-    modulus = 10007;
-}
-
-tbl state = {
-    acc = 0;
-    x = 1;
-    y = 2;
-}
-
-function complex_math(val)
-    num step1 = ((val * 3) % 17) + (val / 2);
-    num step2 = step1 - ((val * 5) % 11);
-    return step2 + (val * (val - 1) / 2);
-end
-
-function mutate_state()
-    num temp_x = state.x;
-    
-    state.x = (state.x * 5) + (state.y * 3) + config.seed;
-    state.x = state.x % config.modulus;
-    
-    state.y = (temp_x * 2) + (state.y * 7) + (config.seed / 2);
-    state.y = state.y % config.modulus;
-    
-    num math_val = complex_math(state.x);
-    state.acc = state.acc + math_val;
-    
-    config.seed = (config.seed + 1) % 100;
-    return state.acc;
-end
-
-function fib(n)
-    if n < 2 then
-        return n;
-    end
-    return fib(n - 1) + fib(n - 2);
-end
-
-print("Phase 1: Deep Loop, Table Mutation, & Arithmetic");
-for i = 0, i < config.iterations, i = i + 1 do
-    mutate_state();
-end
-
-print("Phase 1 Complete. Final Accumulator:");
-print(state.acc);
-
-print("Phase 2: Deep Recursion (Fibonacci)");
-num f_val = fib(24);
-print("Phase 2 Complete. Fib(24):");
-print(f_val);
-
-print("Phase 3: Heap / String Allocations");
-str msg = "A";
-for j = 0, j < 12, j = j + 1 do
-    msg = msg .. msg;
-end
-print("Phase 3 Complete. Outputting 4096-char string:");
-print(msg);
-
-print("Phase 4: Nested Loops & Logic Branching");
-num counter = 0;
-num m = 0;
-while m < 50 do
-    num n = 0;
-    while n < 50 do
-        if (m % 2) == 0 then
-            counter = counter + 1;
-        end
-        if (m % 2) ~= 0 then
-            counter = counter + 2;
-        end
-        n = n + 1;
-    end
-    m = m + 1;
-end
-
-print("Phase 4 Complete. Logic Counter:");
-print(counter);
-print("--- TEST FINISHED ---");
-
-```
-
-### Summary
-
-**Compile Time:** 0.14ms avg
-
-**Execution Time:** 74.60ms avg
-
-* **Phase 1 (Iteration & Arithmetic):** 25,000 loop iterations processing table mutations and arithmetic operations.
-* **Phase 2 (Recursion):** 150,051 recursive `CALL` and `RET` instructions executed for `fib(24)`.
-* **Phase 3 (Allocation):** 12 exponential concatenation cycles resolving a 4,096-character string block.
-* **Phase 4 (Control Flow):** 2,500 total inner loop cycles (50 outer × 50 inner) executing conditional branching.
