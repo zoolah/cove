@@ -694,32 +694,47 @@ namespace Compiler {
             std::string funcname = t[pos].value;
 
             size_t lp_pos = pos + 1;
-            size_t rp_pos = lp_pos;
-            while (rp_pos < t.size() && t[rp_pos].type != TokenType::TOK_RP) {
+            size_t rp_pos = lp_pos + 1;
+            int depth = 1;
+            while (rp_pos < t.size() && depth > 0) {
+                if (t[rp_pos].type == TOK_LP) {
+                    depth++;
+                }
+                else if (t[rp_pos].type == TOK_RP) {
+                    depth--;
+                    if (depth == 0) {
+                        break;
+                    }
+                }
                 rp_pos++;
             }
-            if (rp_pos >= t.size()) {
+            if (depth != 0 || rp_pos >= t.size()) {
                 throw std::runtime_error("Missing closing parenthesis for call to '" + funcname + "'");
             }
 
-            size_t arg_start = lp_pos + 1;
-            int arg_count = 0;
-
-            if (arg_start < rp_pos) {
-                size_t current_comma = arg_start;
-                while (current_comma <= rp_pos) {
-                    size_t next_comma = current_comma;
-                    while (next_comma < rp_pos && t[next_comma].type != TOK_COMMA) {
-                        next_comma++;
+            size_t current = lp_pos + 1;
+            while (current < rp_pos) {
+                size_t next = current;
+                int nested = 0;
+                while (next < rp_pos) {
+                    if (t[next].type == TOK_LP) nested++;
+                    else if (t[next].type == TOK_RP) {
+                        if (nested == 0) break;
+                        nested--;
                     }
-
-                    std::vector<Token> arg_expr(t.begin() + current_comma, t.begin() + next_comma);
-                    auto arg_bytecode = evaluate_expression(arg_expr);
-                    bytecode.insert(bytecode.end(), arg_bytecode.begin(), arg_bytecode.end());     // write bytecode to evaluate each arg, then they get pushed to stack
-
-                    arg_count++;
-                    current_comma = next_comma + 1;
+                    else if (t[next].type == TOK_COMMA && nested == 0) break;
+                    next++;
                 }
+
+                if (current < next) {
+                    std::vector<Token> arg_expr(t.begin() + static_cast<std::ptrdiff_t>(current),
+                                               t.begin() + static_cast<std::ptrdiff_t>(next));
+                    auto arg_bytecode = evaluate_expression(arg_expr);
+                    bytecode.insert(bytecode.end(), arg_bytecode.begin(), arg_bytecode.end());
+                }
+
+                current = next + 1;
+                if (next >= rp_pos) break;
             }
 
             bytecode.push_back(Instruction(CALL, sv(funcname))); // call function (it will read the args off the stack)
