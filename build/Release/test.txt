@@ -1,0 +1,27 @@
+num score = 10;
+num rounds = 3;
+num total = ((score * rounds) % 7) + (score / 2);
+
+str app = "Cove";
+str state = "ready";
+
+if score > 5 and rounds < 10 then
+    print(app .. " is " .. state);
+end
+
+tbl machine = {
+  name = "Ada";
+  phase = "compile";
+  level = 7;
+}
+
+if (score > 5 and rounds < 10) or (machine.level == 7) then
+    machine.phase = "live";
+    print(machine.name .. " :: " .. machine.phase);
+    print(total);
+    print(machine.level);
+
+    if machine.level ~= 7 then
+        print("unexpected");
+    end
+end

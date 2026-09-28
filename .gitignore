@@ -10,7 +10,8 @@
 /*.suo
 /*.user
 
-/build/
+/build/*
+!/build/Release/
 /out/
 /CMakeFiles/
 /CMakeScripts/
