@@ -45,6 +45,8 @@ namespace Compiler {
             switch (instr.op) {
             case PUSH:   label = "PUSH"; operand_text = format_operand(instr.operand); has_operand = true; break;
             case POP:    label = "POP"; break;
+            case DUP:    label = "DUP"; break;
+            case SWAP:   label = "SWAP"; break;
             case ADD:    label = "ADD"; break;
             case SUB:    label = "SUB"; break;
             case MUL:    label = "MUL"; break;
@@ -102,6 +104,7 @@ namespace Compiler {
         std::unordered_map<size_t, std::vector<std::vector<Token>>> call_args;
 
         auto precedence = [](TokenType t) {
+            if (t == TOK_INC || t == TOK_DEC) return 4;          // ++ --
             if (t == TOK_MUL || t == TOK_DIV || t == TOK_MOD) return 3;
             if (t == TOK_ADD || t == TOK_SUB || t == TOK_CONCAT) return 2;
             if (t == TOK_EQ || t == TOK_NOTEQ || t == TOK_LT || t == TOK_GT) return 1;
@@ -213,6 +216,29 @@ namespace Compiler {
 
                 rpn_tokens.push_back(Token(TOK_IDENTIFIER, tok.value + "." + infix_expr[i + 2].value));
                 i += 2;
+            } 
+            else if (tok.type == TOK_IDENTIFIER &&
+                i + 1 < infix_expr.size() &&
+                (infix_expr[i + 1].type == TOK_INC || infix_expr[i + 1].type == TOK_DEC))
+            {
+                rpn_tokens.push_back(tok);
+
+                Token op = infix_expr[i + 1];
+                std::string marker = (op.type == TOK_INC) ? "POSTINC" : "POSTDEC";
+                rpn_tokens.push_back(Token(TOK_IDENTIFIER, marker));
+
+                i += 1;   
+            }
+            else if ((tok.type == TOK_INC || tok.type == TOK_DEC) &&
+                i + 1 < infix_expr.size() &&
+                infix_expr[i + 1].type == TOK_IDENTIFIER)
+            {
+                rpn_tokens.push_back(infix_expr[i + 1]);
+
+                std::string marker = (tok.type == TOK_INC) ? "PREINC" : "PREDEC";
+                rpn_tokens.push_back(Token(TOK_IDENTIFIER, marker));
+
+                i += 1;  
             }
             else if (tok.type == TOK_NUMBER || tok.type == TOK_IDENTIFIER || tok.type == TOK_STR) {
                 rpn_tokens.push_back(tok);
@@ -255,7 +281,7 @@ namespace Compiler {
                 bytecode.push_back(Instruction(PUSH, Value(std::stod(tok.value))));
             }
             else if (tok.type == TOK_STR) {
-                bytecode.push_back(Instruction(PUSH, Value(tok.value)));
+                bytecode.push_back(Instruction(PUSH, Value(tok.value))); 
             }
             else if (tok.type == TOK_IDENTIFIER) {
                 if (tok.value.rfind("CALL:", 0) == 0) {
@@ -283,6 +309,65 @@ namespace Compiler {
 
                     bytecode.insert(bytecode.end(), argument_bytecode.begin(), argument_bytecode.end());
                     bytecode.push_back(Instruction(INP));
+                }
+                else if (tok.value == "PREINC" || tok.value == "POSTINC" ||
+                    tok.value == "PREDEC" || tok.value == "POSTDEC")
+                {
+                    if (idx == 0)
+                        throw std::runtime_error("++/-- used without an identifier");
+
+                    const Token& target = rpn_tokens[idx - 1];
+                    bool is_inc = (tok.value.find("INC") != std::string::npos);
+                    bool is_prefix = (tok.value.find("PRE") != std::string::npos);
+
+                    size_t dot_pos = target.value.find('.');
+                    bool is_table = (dot_pos != std::string::npos);
+
+                    if (!is_table) {
+                        if (is_prefix) {
+                            // ++x / --x
+                            bytecode.push_back(Instruction(PUSH, Value(1.0)));
+                            bytecode.push_back(Instruction(is_inc ? ADD : SUB)); // new
+                            bytecode.push_back(Instruction(DUP));                // new, new
+                            bytecode.push_back(Instruction(STORE, Value(target.value)));
+                        }
+                        else {
+                            // x++ / x--
+                            bytecode.push_back(Instruction(DUP));                // old, old
+                            bytecode.push_back(Instruction(PUSH, Value(1.0)));
+                            bytecode.push_back(Instruction(is_inc ? ADD : SUB)); // old, new
+                            bytecode.push_back(Instruction(STORE, Value(target.value)));
+                            // leaves old
+                        }
+                    }
+                    else {
+                        std::string tablename = target.value.substr(0, dot_pos);
+                        std::string tablekey = target.value.substr(dot_pos + 1);
+
+                        if (is_prefix) {
+                            // ++t.k / --t.k
+                            // stack: old
+                            bytecode.push_back(Instruction(PUSH, Value(1.0)));
+                            bytecode.push_back(Instruction(is_inc ? ADD : SUB)); // new
+                            bytecode.push_back(Instruction(DUP));                // new, new
+
+                            bytecode.push_back(Instruction(PUSH, Value(tablename))); // new, new, name
+        
+                            bytecode.push_back(Instruction(SWAP));
+                            bytecode.push_back(Instruction(STV, Value(tablekey)));
+                            // leaves [new]
+                        }
+                        else {
+                            // t.k++ / t.k--
+                            // stack: old
+                            bytecode.push_back(Instruction(DUP));                // old, old
+                            bytecode.push_back(Instruction(PUSH, Value(1.0)));
+                            bytecode.push_back(Instruction(is_inc ? ADD : SUB)); // old, new
+                            bytecode.push_back(Instruction(PUSH, Value(tablename))); // old, new, name
+                            bytecode.push_back(Instruction(STV, Value(tablekey)));
+                            // leaves old
+                        }
+                    }
                 }
                 else {
                     if (size_t dot_pos = tok.value.find('.'); dot_pos != std::string::npos) {
@@ -631,14 +716,18 @@ namespace Compiler {
             size_t endpos = block_pos;
 
 
+            size_t iter_start = secondcomma + 1;
 
-            // slap the iterator statement right after the code runs
+            while (iter_start < do_pos &&
+                (t[iter_start].type == TOK_SC || t[iter_start].value.empty())) {
+                iter_start++;
+            }
 
-
-            std::vector<Token> iterator_infix_expr(t.begin() + secondcomma + 3, t.begin() + do_pos); 
+            std::vector<Token> iterator_infix_expr(t.begin() + iter_start, t.begin() + do_pos);
             auto iterator_expr_bytecode = evaluate_expression(iterator_infix_expr);
-            bytecode.insert(bytecode.end(), iterator_expr_bytecode.begin(), iterator_expr_bytecode.end());
-            bytecode.push_back(Instruction(STORE, varname));
+            bytecode.insert(bytecode.end(),
+                iterator_expr_bytecode.begin(),
+                iterator_expr_bytecode.end());
 
             bytecode.push_back(Instruction(JMP, condition_bytecode_pos));
 
@@ -836,6 +925,23 @@ namespace Compiler {
 
             return sc_pos + 1;
         }
+        else if (curr.type == TokenType::TOK_IDENTIFIER && pos + 1 < t.size() &&
+            (t[pos + 1].type == TOK_INC || t[pos + 1].type == TOK_DEC)) {
+            size_t sc_pos = pos + 1;
+            while (sc_pos < t.size() && t[sc_pos].type != TOK_SC) {
+                sc_pos++;
+            }
+            if (sc_pos >= t.size()) {
+                throw std::runtime_error("Missing closing semicolon ';' after increment/decrement statement");
+            }
+
+            std::vector<Token> infix_expr(t.begin() + pos, t.begin() + sc_pos);
+            auto expr_bytecode = evaluate_expression(infix_expr);
+            bytecode.insert(bytecode.end(), expr_bytecode.begin(), expr_bytecode.end());
+            bytecode.push_back(Instruction(POP));
+
+            return sc_pos + 1;
+        }
         else if (curr.type == TokenType::TOK_IDENTIFIER && t[pos + 1].type == TokenType::TOK_SEQ) {
             // setting a variable's value
 
@@ -848,6 +954,9 @@ namespace Compiler {
                 sc_pos++;
             }
 
+            bool is_postfix_self_assignment = sc_pos == pos + 4 &&
+                t[pos + 2].type == TOK_IDENTIFIER && t[pos + 2].value == var_name &&
+                (t[pos + 3].type == TOK_INC || t[pos + 3].type == TOK_DEC);
 
             // grab the whole value expression
             std::vector<Token> infix_expr(t.begin() + pos + 2, t.begin() + sc_pos); 
@@ -856,7 +965,9 @@ namespace Compiler {
             // will evaluate then push to stack
 
 
-            bytecode.push_back(Instruction(STORE, var_name)); // now store it in the var 
+            if (!is_postfix_self_assignment) {
+                bytecode.push_back(Instruction(STORE, var_name)); // now store it in the var
+            }
 
 
             return sc_pos + 1;

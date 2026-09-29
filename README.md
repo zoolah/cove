@@ -68,7 +68,32 @@ str name = "Adam";
 print(name);
 ```
 
+
 Numerical variables are declared with `num x = value`, string variables are declared with `str x = value`. 
+
+
+## Unary Arithmetics
+
+```
+num x = 1;
+x = x++;
+
+print(x);
+
+x = x--;
+print(x);
+
+x++;
+print(x);
+
+print(x++);
+print(--x);
+print(x);
+
+```
+
+With prefix notation (`++x` or `--x`), the variable is updated first, and the expression evaluates to the new value. With postfix notation (`x++` or `x--`), the expression evaluates to the current value before the variable updates.
+
 
 ## If statements 
 
@@ -98,12 +123,14 @@ end
 Cove supports a C-style loop header with initializer, condition, and iterator update separated by commas:
 
 ```cove
-for i = 0, i < 5, i = i + 1 do
+for i = 0, i < 5, i++ do
     print("iteration: " .. i);
 end
 ```
 
 The loop initializes `i`, evaluates the condition before each pass, and runs the iterator expression after each iteration.
+
+Important: For loops iterator MUST use a unary operator like ++, --, or *coming soon* +=, or -=.
 
 ## Functions
 
@@ -210,6 +237,8 @@ FUNC     Marks the start of a named function in the bytecode stream
 CALL     Calls a named function by lookup address, creating a new scope for arguments/locals
 RET      Returns execution to the previous call site
 INP      Pop a prompt, read a numeric token from stdin, and push the value
+DUP      Pops a, then pushes a twice
+SWAP     Pops a, pops b, pushes a, pushes b
 ```
 
 

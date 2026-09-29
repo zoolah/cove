@@ -32,7 +32,9 @@ typedef enum {
 	FUNC, 
 	CALL, 
 	RET,
-	INP
+	INP,
+	DUP,
+	SWAP
 } Opcode;
 
 
@@ -98,7 +100,9 @@ enum TokenType {
 	TOK_LB,	   // {
 	TOK_RB,     // }
 	TOK_DOT,   // .
-	TOK_COMMA  // ,
+	TOK_COMMA,  // ,
+	TOK_INC,  // ++
+	TOK_DEC   // --
 };
 
 struct Token {
@@ -126,6 +130,10 @@ public:
 		Value value = std::move(data_.back());
 		data_.pop_back();
 		return value;
+	}
+
+	size_t size() {
+		return data_.size();
 	}
 };
 

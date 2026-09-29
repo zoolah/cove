@@ -73,6 +73,16 @@ namespace Tokenizer {
                 continue;
             }
 
+            if (c == '+' && source[pos + 1] == '+') {
+                results.push_back(Token(TOK_INC));
+                pos += 2;
+                continue;
+            }
+            if (c == '-' && source[pos + 1] == '-') {
+                results.push_back(Token(TOK_DEC));
+                pos += 2;
+                continue;
+            }
             if (c == '+') { results.push_back(Token(TOK_ADD)); pos++; continue; }
             if (c == '-') { results.push_back(Token(TOK_SUB)); pos++; continue; }
             if (c == '/') { results.push_back(Token(TOK_DIV)); pos++; continue; }

@@ -44,6 +44,12 @@ public:
                 case PUSH: {
                     stack.push(instr.operand);
                     break;
+                } 
+                case DUP: {
+                    Value v = stack.pop();   
+                    stack.push(v);
+                    stack.push(v);
+                    break;
                 }
                 case ADD: {
                     Value A = stack.pop();
@@ -460,7 +466,15 @@ public:
                     stack.push(Value(buf));
                     
                 }
-
+                case SWAP: {
+                    if (stack.size() < 2)
+                        throw std::runtime_error("SWAP requires two values");
+                    Value a = stack.pop();
+                    Value b = stack.pop();
+                    stack.push(a);
+                    stack.push(b);
+                    break;
+                }
               
 
 
