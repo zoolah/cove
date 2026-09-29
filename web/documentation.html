@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141414">
+  <title>Cove | Documentation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css?v=3">
+  <script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js" defer></script>
+  <script src="./navigation.js" defer></script>
+  <script src="./documentation.js?v=6" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span>Cove</span>
+      <div class="page-switcher">
+        <button class="page-switcher-button" id="page-switcher-toggle" type="button" aria-expanded="false" aria-controls="page-switcher-menu">
+          <span>Documentation</span>
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
+        </button>
+        <div class="page-switcher-menu" id="page-switcher-menu" hidden>
+          <a href="./index.html">Playground</a>
+        </div>
+      </div>
+    </div>
+    <div class="topbar-meta">
+      <a class="source-link" href="https://github.com/zoolah/cove" target="_blank" rel="noreferrer">Source <span aria-hidden="true">↗</span></a>
+    </div>
+  </header>
+
+  <main class="docs-page">
+    <aside class="docs-sidebar" id="docs-sidebar" aria-label="Documentation sections">
+      <nav class="docs-toc">
+        <p class="docs-toc-label">On this page</p>
+        <div class="docs-toc-links" id="docs-toc-links"></div>
+      </nav>
+    </aside>
+    <article class="docs-content" id="readme-content" aria-live="polite">
+      <p class="docs-loading">Loading documentation...</p>
+    </article>
+  </main>
+</body>
+</html>

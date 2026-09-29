@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141414">
+  <title>Cove Playground</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css?v=3">
+  <script src="./cove.js" defer></script>
+  <script src="./app.js" defer></script>
+  <script src="./navigation.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span>Cove</span>
+      <div class="page-switcher">
+        <button class="page-switcher-button" id="page-switcher-toggle" type="button" aria-expanded="false" aria-controls="page-switcher-menu">
+          <span>Playground</span>
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
+        </button>
+        <div class="page-switcher-menu" id="page-switcher-menu" hidden>
+          <a href="./documentation.html">Documentation</a>
+        </div>
+      </div>
+    </div>
+    <div class="topbar-meta">
+      <a class="source-link" href="https://github.com/zoolah/cove" target="_blank" rel="noreferrer">Source <span aria-hidden="true">↗</span></a>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <section class="workbench" aria-label="Cove code editor">
+      <div class="editor-shell">
+        <div class="line-numbers" id="line-numbers" aria-hidden="true"></div>
+        <textarea id="source" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="Cove source code"></textarea>
+      </div>
+
+      <div class="editor-foot">
+        <span id="cursor-position">Ln 1, Col 1</span>
+      </div>
+    </section>
+
+    <aside class="console-panel" aria-label="Program output">
+      <div class="console-head">
+        <div class="console-title"><h1>Console</h1></div>
+        <button class="text-button" id="clear-output" type="button">Clear</button>
+      </div>
+      <div class="console-body" id="console-output" role="log" aria-live="polite" aria-relevant="additions text">
+        <p class="console-placeholder">Run your program to see its output here.</p>
+      </div>
+      <div class="console-foot">
+        <button class="run-button" id="run-code" type="button" disabled title="Run program" aria-label="Run program">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 12 7-12 7z"/></svg>
+        </button>
+      </div>
+    </aside>
+  </main>
+
+</body>
+</html>
