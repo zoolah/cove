@@ -787,6 +787,29 @@ namespace Compiler {
 
             return block_pos + 1;
         }
+        else if (curr.value == "class") {
+            std::string classname = t[pos + 1].value;
+            
+            size_t lp_pos = pos + 2;
+            if (t[lp_pos].type != TOK_LP) {
+                throw std::runtime_error("'{' Expected after class declaration '"+classname + "'");
+            }
+
+            size_t rp_pos = lp_pos + 1;
+            size_t depth = 1;
+
+            while (rp_pos < t.size()) {
+                if (t[rp_pos].type == TOK_RP) depth--;
+                if (t[rp_pos].type == TOK_LP) depth++;
+
+                if (depth > 1) break;
+                rp_pos++;
+            }
+
+            // continue this to parse class members 
+
+            return rp_pos + 1;
+        }
         else if (curr.value == "input") {
             throw std::runtime_error("input() can only be used in an expression");
 
@@ -925,8 +948,7 @@ namespace Compiler {
 
             return sc_pos + 1;
         }
-        else if (curr.type == TokenType::TOK_IDENTIFIER && pos + 1 < t.size() &&
-            (t[pos + 1].type == TOK_INC || t[pos + 1].type == TOK_DEC)) {
+        else if (curr.type == TokenType::TOK_IDENTIFIER && pos + 1 < t.size() && (t[pos + 1].type == TOK_INC || t[pos + 1].type == TOK_DEC)) {
             size_t sc_pos = pos + 1;
             while (sc_pos < t.size() && t[sc_pos].type != TOK_SC) {
                 sc_pos++;
