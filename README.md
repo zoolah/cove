@@ -18,7 +18,6 @@ Documentation Site - https://zoolah.github.io/cove/web/documentation.html
 - string concatenation: `..`
 - tables with dot access: `profile.name`
 - tables can hold function values and call them through the table: `obj.fn(...)`
-- table scoping matches variable scoping, including nested function calls: inner tables shadow outer ones and leave scope when the call returns
 - variable reassignment after declaration: `varname = anyexpression;`
 - function declarations: `function name(arg1, arg2) ... end`
 - function calls: `name(value1, value2)` and return values with `return expression`
