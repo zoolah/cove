@@ -150,6 +150,43 @@ button { color: inherit; }
 .run-button:disabled { border-color: #444; color: #777; background: #292929; cursor: wait; }
 :focus-visible { outline: 2px solid #ddd; outline-offset: 3px; }
 
+@media (min-width: 1600px) {
+  .workspace { width: min(2200px, 100%); min-height: min(1100px, calc(100vh - 68px)); padding: 48px 4vw 40px; grid-template-columns: minmax(0, 1.65fr) minmax(420px, .85fr); gap: 24px; }
+  .workbench, .console-panel { min-height: 680px; }
+  .editor-shell { padding: 26px 0 28px; }
+  .line-numbers, #source { font-size: 16px; line-height: 1.85; }
+  .line-numbers { flex-basis: 68px; margin-right: 18px; padding-right: 16px; }
+  #source { padding-right: 28px; }
+  .editor-foot { min-height: 40px; flex-basis: 40px; font-size: 12px; }
+  .console-head { min-height: 56px; padding: 0 20px; }
+  .console-title h1 { font-size: 15px; }
+  .text-button { font-size: 13px; }
+  .console-body { padding: 24px 22px; font-size: 14px; line-height: 1.85; }
+  .console-foot { min-height: 60px; flex-basis: 60px; padding: 0 16px; }
+  .run-button { width: 42px; height: 42px; }
+  .run-button svg { width: 19px; height: 19px; }
+  .docs-page { width: min(1720px, 100%); grid-template-columns: 220px minmax(0, 900px); }
+  .docs-content { font-size: 17px; }
+  .docs-content h1 { font-size: 38px; }
+  .docs-content h2 { font-size: 26px; }
+  .docs-content h3 { font-size: 20px; }
+  .docs-toc-links a { font-size: 14px; }
+  .docs-toc-links .toc-level-3 { font-size: 12px; }
+}
+
+@media (min-width: 2400px) {
+  .workspace { width: min(2500px, 100%); min-height: min(1300px, calc(100vh - 80px)); padding-top: 60px; }
+  .workbench, .console-panel { min-height: 800px; }
+  .line-numbers, #source { font-size: 18px; }
+  .console-body { font-size: 16px; }
+  .editor-foot { font-size: 13px; }
+  .docs-page { width: min(1900px, 100%); grid-template-columns: 240px minmax(0, 1040px); }
+  .docs-content { font-size: 18px; }
+  .docs-content h1 { font-size: 42px; }
+  .docs-content h2 { font-size: 29px; }
+  .docs-content h3 { font-size: 22px; }
+}
+
 @media (max-width: 760px) {
   .topbar { height: 60px; }
   .topbar-meta { gap: 13px; }
