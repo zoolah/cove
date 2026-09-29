@@ -2,7 +2,8 @@
 
 Cove is a lightweight, custom stack-based programming language implemented in C++ with Lua-like syntax
 
-Try the language in the WASM powered playground at https://zoolah.github.io/cove/web
+WASM Powered Cove Playground (write & execute cove code) - [https://zoolah.github.io/cove/web](https://zoolah.github.io/cove/web/index.html)
+Documentation Site - https://zoolah.github.io/cove/web/documentation.html
 
 ## What it supports
 
