@@ -2,7 +2,7 @@ const sampleProgram = `str greeting = "Hello from Cove!";
 print(greeting);
 
 num total = 0;
-for i = 1, i < 6, i = i + 1 do
+for i = 1, i < 6, i++ do
     total = total + i;
 end
 print("sum: " .. total);`;
