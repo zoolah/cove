@@ -71,6 +71,9 @@ namespace Compiler {
             case FUNC:   label = "FUNC"; operand_text = instr.operand.as_string(); has_operand = true; indent = 2; in_function = true; break;
             case CALL:   label = "CALL"; operand_text = instr.operand.as_string(); has_operand = true; break;
             case RET:    label = "RET"; break;
+            case CDEF:   label = "CDEF"; operand_text = instr.operand.as_string(); has_operand = true; break;
+            case CNUM:   label = "CNUM"; operand_text = instr.operand.as_string(); has_operand = true; break;
+            case CSTR:   label = "CSTR"; operand_text = instr.operand.as_string(); has_operand = true; break;
             default:     label = "UNKNOWN"; break;
             }
 
@@ -790,25 +793,56 @@ namespace Compiler {
         else if (curr.value == "class") {
             std::string classname = t[pos + 1].value;
             
-            size_t lp_pos = pos + 2;
-            if (t[lp_pos].type != TOK_LP) {
+            size_t lb_pos = pos + 2;
+            if (t[lb_pos].type != TOK_LB) {
                 throw std::runtime_error("'{' Expected after class declaration '"+classname + "'");
             }
 
-            size_t rp_pos = lp_pos + 1;
+            size_t cursor = lb_pos + 1;
             size_t depth = 1;
 
-            while (rp_pos < t.size()) {
-                if (t[rp_pos].type == TOK_RP) depth--;
-                if (t[rp_pos].type == TOK_LP) depth++;
 
-                if (depth > 1) break;
-                rp_pos++;
+            // CDEF,
+            // CNUM,
+            // CSTR,
+
+            bytecode.push_back(Instruction(CDEF, classname)); // creates class entry 
+
+
+            while (cursor < t.size()) {
+                auto curr = t[cursor];
+                if (curr.type == TOK_RB) depth--;
+                if (curr.type == TOK_LB) depth++;
+
+                if (curr.value == "num" || curr.value == "str") {
+                    // number member
+
+                    
+                    if (t[cursor+1].type != TOK_IDENTIFIER) throw std::runtime_error("Expected identifier after 'num' in class definition");
+                    std::string name = t[cursor + 1].value;
+
+
+                    if (t[cursor+2].type != TOK_SC) throw std::runtime_error("Expected ';' after " + name);
+
+                    if (curr.value == "num")
+                        bytecode.push_back(Instruction(CNUM, name));
+                    if (curr.value == "str")
+                        bytecode.push_back(Instruction(CSTR, name));
+
+
+                }
+                
+
+                if (depth == 0) break;
+                cursor++;
             }
 
             // continue this to parse class members 
 
-            return rp_pos + 1;
+
+
+
+            return cursor + 1;
         }
         else if (curr.value == "input") {
             throw std::runtime_error("input() can only be used in an expression");

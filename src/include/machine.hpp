@@ -5,11 +5,19 @@
 #include <iostream>
 #include "structs.hpp"
 
+#define map std::unordered_map
+
 class Machine {
 private:
     Stack stack;
     std::vector<std::unordered_map<std::string, Value>> scopes;  // variables in scopes
     std::vector < std::unordered_map<std::string, std::unordered_map<std::string, Value>>> tablescopes; // tables in scopes
+
+
+    // classes
+    map<std::string, map<std::string, Value>> cdefs;
+    std::string currClassDef = "";
+
 
     std::vector<uint64_t> call_stack; // return addresses
     std::unordered_map<std::string, uint64_t> function_addresses; // maps func names to their entry points
@@ -475,7 +483,26 @@ public:
                     stack.push(b);
                     break;
                 }
-              
+                case CDEF: {
+
+                    std::string className = instr.operand.as_string();
+                    cdefs[className] = map<std::string, Value>();
+                    currClassDef = className;
+                    break;
+                }
+
+                case CNUM: {
+                    std::string numvarname = instr.operand.as_string();
+
+                    cdefs[currClassDef][numvarname] = Value();
+                    break;
+                }
+                case CSTR: {
+                    std::string strvarname = instr.operand.as_string();
+
+                    cdefs[currClassDef][strvarname] = Value("");
+                    break;
+                }
 
 
             }

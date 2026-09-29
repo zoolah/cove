@@ -34,7 +34,10 @@ typedef enum {
 	RET,
 	INP,
 	DUP,
-	SWAP
+	SWAP,
+	CDEF,
+	CNUM,
+	CSTR,
 } Opcode;
 
 
