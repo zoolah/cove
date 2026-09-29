@@ -10,10 +10,11 @@ Documentation Site - https://zoolah.github.io/cove/web/documentation.html
 
 - `num` and `str` values
 - arithmetic: `+ - * / %`
+- unary arithmetics: `++ --`
 - comparisons: `== ~= < >`
 - conditionals: `if ... then ... end`
 - while loops: `while expression do ... end`
-- for loops: `for i = 0, i < 10, i = i + 1 do ... end`
+- for loops: `for i = 0, i < 10, i++ do ... end`
 - logical chaining: `and`, `or`
 - string concatenation: `..`
 - tables with dot access: `profile.name`
