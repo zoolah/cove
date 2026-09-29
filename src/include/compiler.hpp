@@ -757,11 +757,7 @@ namespace Compiler {
             }
             return rp_pos + 1; 
         }
-        else if (curr.type == TokenType::TOK_IDENTIFIER &&
-                 pos + 3 < t.size() &&
-                 t[pos + 1].type == TokenType::TOK_DOT &&
-                 t[pos + 2].type == TokenType::TOK_IDENTIFIER &&
-                 t[pos + 3].type == TOK_LP) {
+        else if (curr.type == TokenType::TOK_IDENTIFIER &&pos + 3 < t.size() &&t[pos + 1].type == TokenType::TOK_DOT &&t[pos + 2].type == TokenType::TOK_IDENTIFIER &&t[pos + 3].type == TOK_LP) {
             std::string table_name = curr.value;
             std::string key_name = t[pos + 2].value;
 

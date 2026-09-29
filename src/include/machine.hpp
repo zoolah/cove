@@ -158,18 +158,18 @@ public:
 
                     if (a.is_number() && b.is_number()) {
                         if (a.as_number() == b.as_number()) {
-                            stack.push(Value(0.0));
+                            stack.push(Value(1.0));
                         }
                         else {
-                            stack.push(Value(1.0));
+                            stack.push(Value(0.0));
                         }
                     }
                     else if (a.is_string() && b.is_string()) {
                         if (a.as_string() == b.as_string()) {
-                            stack.push(Value(0.0));
+                            stack.push(Value(1.0));
                         }
                         else {
-                            stack.push(Value(1.0));
+                            stack.push(Value(0.0));
                         }
                     }
                     else {
