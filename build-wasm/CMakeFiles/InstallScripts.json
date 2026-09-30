@@ -1,7 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"C:/Users/idx/source/repos/cove/cove/build-wasm/cmake_install.cmake"
-	],
-	"Parallel" : false
-}
