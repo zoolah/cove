@@ -4,19 +4,19 @@ namespace ops {
     void classes(Machine& vm, Instruction& instr) {
         switch (instr.op) {
             case CDEF: {
-                std::string className = instr.operand.as_string();
-                vm.cdefs[className] = umap<std::string, Value>();
-                vm.currClassDef = className;
+                std::string class_name = instr.operand.as_string();
+                vm.cdefs[class_name] = umap<std::string, Value>();
+                vm.curr_class_def = class_name;
                 break;
             }
             case CNUM: {
-                std::string numvarname = instr.operand.as_string();
-                vm.cdefs[vm.currClassDef][numvarname] = Value();
+                std::string num_var_name = instr.operand.as_string();
+                vm.cdefs[vm.curr_class_def][num_var_name] = Value();
                 break;
             }
             case CSTR: {
-                std::string strvarname = instr.operand.as_string();
-                vm.cdefs[vm.currClassDef][strvarname] = Value("");
+                std::string str_var_name = instr.operand.as_string();
+                vm.cdefs[vm.curr_class_def][str_var_name] = Value("");
                 break;
             }
             case INSTC: {

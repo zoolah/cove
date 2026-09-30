@@ -79,14 +79,14 @@ size_t compile_return(const Tokens& t, size_t pos, Bytecode& bytecode) {
 }
 
 size_t compile_call(const Tokens& t, size_t pos, Bytecode& bytecode) {
-    const std::string& funcname = t[pos].value;
+    const std::string& func_name = t[pos].value;
 
     size_t lp = pos + 1;
     size_t rp = find_close(t, lp);
-    expect(rp < t.size(), "Missing closing parenthesis for call to '" + funcname + "'");
+    expect(rp < t.size(), "Missing closing parenthesis for call to '" + func_name + "'");
 
     compile_args(t, lp, rp, bytecode);
-    bytecode.push_back(Instruction(CALL, Value(funcname))); 
+    bytecode.push_back(Instruction(CALL, Value(func_name))); 
     return end_of_call(t, rp);
 }
 

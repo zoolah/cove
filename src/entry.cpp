@@ -18,11 +18,11 @@ namespace Color {
     constexpr const char* red = "\033[31m";
 }
 
-std::string read_file(const std::string& filepath) {
-    std::ifstream file(filepath);
+std::string read_file(const std::string& file_path) {
+    std::ifstream file(file_path);
 
     if (!file.is_open()) {
-        throw std::runtime_error("Couldn't open file: " + filepath);
+        throw std::runtime_error("Couldn't open file: " + file_path);
     }
 
     std::stringstream buffer;

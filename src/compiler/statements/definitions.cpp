@@ -3,11 +3,11 @@
 namespace Compiler {
 
 size_t compile_function(const Tokens& t, size_t pos, Bytecode& bytecode) {
-    const std::string funcname = t[pos + 1].value;
+    const std::string func_name = t[pos + 1].value;
 
     size_t lp = pos + 2;
     expect(t[lp].type == TOK_LP,
-        "Expected '(' after function declaration '" + funcname + "', but got '" + t[lp].value + "'");
+        "Expected '(' after function declaration '" + func_name + "', but got '" + t[lp].value + "'");
 
     size_t rp = find_type(t, lp + 1, TOK_RP); 
     std::vector<std::string> params;
@@ -17,14 +17,14 @@ size_t compile_function(const Tokens& t, size_t pos, Bytecode& bytecode) {
 
     size_t skip = bytecode.size();
     bytecode.push_back(Instruction(JMP, 0.0)); 
-    bytecode.push_back(Instruction(FUNC, Value(funcname))); 
+    bytecode.push_back(Instruction(FUNC, Value(func_name))); 
 
     for (auto it = params.rbegin(); it != params.rend(); ++it) {
         bytecode.push_back(Instruction(STORE, Value(*it))); 
     }
 
     size_t end_pos = compile_until_end(t, rp + 1, bytecode);
-    expect(end_pos < t.size(), "Missing 'end' keyword for function '" + funcname + "'");
+    expect(end_pos < t.size(), "Missing 'end' keyword for function '" + func_name + "'");
 
     bytecode.push_back(Instruction(PUSH, 0)); 
     bytecode.push_back(Instruction(RET));
@@ -34,12 +34,12 @@ size_t compile_function(const Tokens& t, size_t pos, Bytecode& bytecode) {
 }
 
 size_t compile_class(const Tokens& t, size_t pos, Bytecode& bytecode) {
-    const std::string classname = t[pos + 1].value;
+    const std::string class_name = t[pos + 1].value;
 
     size_t lb = pos + 2;
-    expect(t[lb].type == TOK_LB, "'{' Expected after class declaration '" + classname + "'");
+    expect(t[lb].type == TOK_LB, "'{' Expected after class declaration '" + class_name + "'");
 
-    bytecode.push_back(Instruction(CDEF, Value(classname))); 
+    bytecode.push_back(Instruction(CDEF, Value(class_name))); 
 
     size_t cursor = lb + 1;
     int depth = 1;
@@ -108,13 +108,13 @@ size_t compile_new(const Tokens& t, size_t pos, Bytecode& bytecode) {
 
     size_t class_pos = rp + 1;
     expect(t[class_pos].type == TOK_IDENTIFIER, "Expected indentifier as class name for object '" + object + "'");
-    const std::string classname = t[class_pos].value;
+    const std::string class_name = t[class_pos].value;
 
     size_t sc = class_pos + 1;
     expect(t[sc].type == TOK_SC, "Expected ';' after class instantiation");
 
     bytecode.push_back(Instruction(PUSH, Value(object)));
-    bytecode.push_back(Instruction(INSTC, Value(classname)));
+    bytecode.push_back(Instruction(INSTC, Value(class_name)));
     return sc + 1;
 }
 

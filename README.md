@@ -46,7 +46,7 @@ cmake --build build --config Release
 
 The executable will be in `build/Release/cove.exe`
 
-Cove requires a C++17 compiler (it uses `std::variant` and `if` statements with initializers). The Visual Studio project is configured for C++20.
+Cove requires a C++17 compiler (it uses `std::variant` and `if` statements with initializers). 
 
 ## Quick start
 
@@ -585,7 +585,7 @@ public:
     std::vector<umap<std::string, umap<std::string, Value>>> tablescopes;     // table scopes
     umap<std::string, umap<std::string, Value>> cdefs;                        // class definitions
     std::vector<umap<std::string, umap<std::string, Value>>> cscopes;         // class instance scopes
-    std::string currClassDef = "";                                            // class being defined
+    std::string curr_class_def = "";                                          // class being defined
     std::vector<uint64_t> call_stack;                                         // return addresses
     umap<std::string, uint64_t> function_addresses;                           // function entry points
     uint64_t pc = 0;                                                          // program counter
@@ -600,7 +600,7 @@ scopes               Stack of variable maps (name -> Value). Index 0 is global; 
 tablescopes          Parallel stack of table maps (table name -> (key -> Value)).
 cscopes              Parallel stack of class instance maps (instance name -> (member -> Value)).
 cdefs                Class definitions (class name -> member defaults). Global, not scoped.
-currClassDef         Name set by CDEF so that the following CNUM / CSTR know which class they extend.
+curr_class_def       Name set by CDEF so that the following CNUM / CSTR know which class they extend.
 call_stack           Return addresses pushed by CALL and popped by RET.
 function_addresses   Function name -> index of the instruction after its FUNC marker.
 pc                   Index of the instruction being executed.

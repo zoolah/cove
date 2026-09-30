@@ -28,7 +28,7 @@ public:
 
     umap<std::string, umap<std::string, Value>> cdefs;
     std::vector<umap<std::string, umap<std::string, Value>>> cscopes;
-    std::string currClassDef = "";
+    std::string curr_class_def = "";
 
     std::vector<uint64_t> call_stack;
     umap<std::string, uint64_t> function_addresses;
