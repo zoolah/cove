@@ -1,12 +1,6 @@
-#include <string>
-#include <vector>
-#include <cctype>
-#include "structs.hpp"
-#define isspace std::isspace
-#define isletter(c) (std::isalpha(c) || (c) == '_')
+#include "../compiler.hpp"
 
-namespace Tokenizer {
-    inline std::vector<Token> tokenize(const std::string& source) {
+std::vector<Token> Compiler::tokenize(const std::string& source) {
         std::vector<Token> results;
         size_t pos = 0;
 
@@ -92,6 +86,11 @@ namespace Tokenizer {
             if (c == '|') { results.push_back(Token(TOK_OR)); pos++; continue; }
             if (c == '{') { results.push_back(Token(TOK_LB)); pos++; continue; }
             if (c == '}') { results.push_back(Token(TOK_RB)); pos++; continue; }
+            if (c == ':' && pos + 1 < source.length() && source[pos + 1] == ':') {
+                results.push_back(Token(TOK_DCOLON));
+                pos += 2;
+                continue;
+            }
             if (c == '.' && source[pos + 1] == '.') {
                 results.push_back(Token(TOK_CONCAT));
                 pos += 2;
@@ -150,5 +149,4 @@ namespace Tokenizer {
         }
 
         return results;
-    }
 }

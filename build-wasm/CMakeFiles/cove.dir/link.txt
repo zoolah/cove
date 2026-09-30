@@ -1,0 +1,1 @@
+C:\Users\idx\OneDrive\Desktop\emsdk\upstream\emscripten\em++.exe -O3 -DNDEBUG @CMakeFiles\cove.dir\objects1.rsp -o cove.js

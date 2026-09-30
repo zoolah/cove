@@ -1,0 +1,3 @@
+C:/Users/idx/source/repos/cove/cove/build-wasm/CMakeFiles/cove.dir
+C:/Users/idx/source/repos/cove/cove/build-wasm/CMakeFiles/edit_cache.dir
+C:/Users/idx/source/repos/cove/cove/build-wasm/CMakeFiles/rebuild_cache.dir
