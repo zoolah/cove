@@ -3,9 +3,9 @@
 #include <sstream>
 #include <chrono>
 #include <iomanip>
-#include "include/machine.hpp"
-#include "include/compiler.hpp"
-#include "include/tokenizer.hpp"
+#include "compiler/compiler.hpp"
+#include "vm/machine.hpp"
+#include "shared/structs.hpp"
 
 namespace Color {
     constexpr const char* reset = "\033[0m";
@@ -68,8 +68,8 @@ int main(int argc, char** argv) {
         std::string source_code = read_file(source_path);
 
         auto compile_start = std::chrono::steady_clock::now();
-        std::vector<Token> tokenized = Tokenizer::tokenize(source_code);
-        std::vector<Instruction> bytecode = Compiler::compile(tokenized);
+        
+        std::vector<Instruction> bytecode = Compiler::compile(source_code);
         auto compile_end = std::chrono::steady_clock::now();
 
         if (bytecode.size() == 0) {

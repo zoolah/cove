@@ -38,6 +38,9 @@ typedef enum {
 	CDEF,
 	CNUM,
 	CSTR,
+	INSTC,
+	CLOAD,
+	CSTORE
 } Opcode;
 
 
@@ -105,7 +108,8 @@ enum TokenType {
 	TOK_DOT,   // .
 	TOK_COMMA,  // ,
 	TOK_INC,  // ++
-	TOK_DEC   // --
+	TOK_DEC,  // --
+	TOK_DCOLON // ::
 };
 
 struct Token {

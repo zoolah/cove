@@ -155,6 +155,22 @@ print(sum(4 * 3, 9 / 3));
 
 Function calls can include nested expressions inside the argument list, and arguments are evaluated before the function body runs. A function can return an expression with `return`, but if no such statement is written, it will return  `0`.
 
+## Classes
+
+```cove
+class Person {
+     str name;
+     num health;
+}
+
+new Person() person;
+
+person::health = 100;
+person::name = "Bryan";
+
+print(person::name .. " has " .. person::health .. " health!");
+```
+
 ## Input
 
 `input(prompt)` prints its string prompt, reads one token from standard input, and returns it as a string. Cove does not implicitly convert input strings to numbers, so using an input result in arithmetic raises a runtime error.
@@ -240,6 +256,7 @@ RET      Returns execution to the previous call site
 INP      Pop a prompt, read a numeric token from stdin, and push the value
 DUP      Pops a, then pushes a twice
 SWAP     Pops a, pops b, pushes a, pushes b
+
 ```
 
 
