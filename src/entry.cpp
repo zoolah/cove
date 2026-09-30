@@ -3,9 +3,12 @@
 #include <sstream>
 #include <chrono>
 #include <iomanip>
+#include <filesystem>
+#include <vector>
 #include "compiler/compiler.hpp"
 #include "vm/machine.hpp"
 #include "shared/structs.hpp"
+#include "standalone/standalone.hpp"
 
 namespace Color {
     constexpr const char* reset = "\033[0m";
@@ -31,12 +34,35 @@ std::string read_file(const std::string& file_path) {
 }
 
 void print_usage(const char* exe_name) {
-    std::cout << Color::bold << Color::cyan << "Usage:" << Color::reset << " " << exe_name << " [--verbose] <filename.cove>\n";
-    std::cout << "       " << exe_name << " <filename.cove> --verbose\n";
+    std::cout << Color::bold << Color::cyan << "Usage:" << Color::reset << " " << exe_name << " [--verbose | -v] [--standalone | -s] <filename>\n";
+    std::cout << "       " << exe_name << " --help | -h\n";
 }
 
 int main(int argc, char** argv) {
+    std::filesystem::path executable_path;
+    try {
+        executable_path = Standalone::current_executable_path(argc > 0 ? argv[0] : nullptr);
+        if (auto bytecode = Standalone::read_embedded_bytecode(executable_path)) {
+            int exit_code = 0;
+            try {
+                Machine vm;
+                vm.run(*bytecode);
+            }
+            catch (const std::exception& e) {
+                std::cerr << Color::red << "Fatal Error: " << e.what() << Color::reset << std::endl;
+                exit_code = 1;
+            }
+            Standalone::pause_if_launched_from_explorer();
+            return exit_code;
+        }
+    }
+    catch (const std::exception& e) {
+        std::cerr << Color::red << "Fatal Error: " << e.what() << Color::reset << std::endl;
+        return 1;
+    }
+
     bool verbose = false;
+    bool standalone = false;
     std::string source_path;
 
     for (int i = 1; i < argc; ++i) {
@@ -44,6 +70,9 @@ int main(int argc, char** argv) {
 
         if (arg == "--verbose" || arg == "-v") {
             verbose = true;
+        }
+        else if (arg == "--standalone" || arg == "-s") {
+            standalone = true;
         }
         else if (arg == "--help" || arg == "-h") {
             print_usage(argv[0]);
@@ -83,6 +112,12 @@ int main(int argc, char** argv) {
 
             auto compile_ms = std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(compile_end - compile_start).count();
             std::cout << Color::bold << Color::green << "Compile" << Color::reset << " took " << std::fixed << std::setprecision(2) << compile_ms << " ms\n";
+        }
+
+        if (standalone) {
+            const auto output_path = Standalone::create_standalone_executable(executable_path, source_path, bytecode);
+            std::cout << "Created standalone executable: " << output_path.string() << std::endl;
+            return 0;
         }
 
         auto exec_start = std::chrono::steady_clock::now();

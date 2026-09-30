@@ -52,14 +52,16 @@ Cove requires a C++17 compiler (it uses `std::variant` and `if` statements with 
 
 ```bash
 cove.exe program.txt
+cove.exe program.txt --standalone
+cove.exe program.txt -s
 ```
 
-The source will be tokenized, compiled, and executed in the VM.
+By default, the source is tokenized, compiled, and executed in the VM. With `--standalone` (`-s`), Cove writes a self-contained executable beside the source file, using the same base name with an `.exe` extension. The generated executable contains the VM and compiled bytecode and does not need the source file or the Cove compiler to run.
 
 Command line:
 
 ```text
-cove.exe [--verbose | -v] <filename>
+cove.exe [--verbose | -v] [--standalone | -s] <filename>
 cove.exe --help | -h
 ```
 
