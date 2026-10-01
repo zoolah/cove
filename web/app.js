@@ -40,9 +40,7 @@ end
 
 n = "done"; 
 print(n);
-
-str name = input("Name? "); 
-print(name);`;
+`;
 
 const sourceEditor = document.querySelector("#source");
 const lineNumbers = document.querySelector("#line-numbers");
