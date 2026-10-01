@@ -3,10 +3,11 @@
 namespace ops {
     static std::string resolve_instance_name(Machine& vm, const std::string& name) {
         if (name != "this") return name;
-        if (vm.constructor_instances.empty()) {
+        const std::string instance_name = vm.current_instance_name();
+        if (instance_name.empty()) {
             throw std::runtime_error("'this' can only be used inside a class constructor");
         }
-        return vm.constructor_instances.back();
+        return instance_name;
     }
 
     void classes(Machine& vm, Instruction& instr, uint64_t& next_pc) {
@@ -107,14 +108,7 @@ namespace ops {
                 if (class_it == vm.member_function_addresses.end() || class_it->second.find(func_name) == class_it->second.end()) {
                     throw std::runtime_error("Member function not defined for class '" + class_name + "': " + func_name);
                 }
-                vm.call_stack.push_back(next_pc);
-                vm.constructor_call_stack.push_back(false);
-                vm.member_function_call_stack.push_back(true);
-                vm.constructor_instances.push_back(instance_name);
-                vm.scopes.emplace_back();
-                vm.tablescopes.emplace_back();
-                vm.cscopes.emplace_back();
-                vm.class_type_scopes.emplace_back();
+                vm.enter_call(next_pc, CallType::MemberFunction, instance_name);
                 next_pc = class_it->second[func_name];
                 break;
             }
@@ -125,14 +119,7 @@ namespace ops {
                 if (constructor_it == vm.classdef_constructor_pos.end()) {
                     throw std::runtime_error("Constructor not defined for class '" + class_name + "'");
                 }
-                vm.call_stack.push_back(next_pc);
-                vm.constructor_call_stack.push_back(true);
-                vm.member_function_call_stack.push_back(false);
-                vm.constructor_instances.push_back(instance_name);
-                vm.scopes.emplace_back();
-                vm.tablescopes.emplace_back();
-                vm.cscopes.emplace_back();
-                vm.class_type_scopes.emplace_back();
+                vm.enter_call(next_pc, CallType::Constructor, instance_name);
                 next_pc = constructor_it->second;
                 break;
             }
