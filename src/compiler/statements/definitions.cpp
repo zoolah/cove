@@ -41,6 +41,8 @@ size_t compile_class(const Tokens& t, size_t pos, Bytecode& bytecode) {
 
     bytecode.push_back(Instruction(CDEF, Value(class_name))); 
 
+
+    
     size_t cursor = lb + 1;
     int depth = 1;
     for (; cursor < t.size(); ++cursor) {
@@ -54,6 +56,40 @@ size_t compile_class(const Tokens& t, size_t pos, Bytecode& bytecode) {
             expect(t[cursor + 2].type == TOK_SC, "Expected ';' after " + name);
 
             bytecode.push_back(Instruction(c.value == "num" ? CNUM : CSTR, Value(name)));
+        
+        }
+
+        // find constructor
+        if (c.value == class_name && t[cursor + 1].type == TOK_LP) { // classname(
+            auto lp = cursor + 1;
+
+            size_t rp = find_type(t, lp + 1, TOK_RP); // )
+            std::vector<std::string> params;
+
+            for (size_t i = lp + 1; i < rp; ++i) {
+                if (t[i].type == TOK_IDENTIFIER) params.push_back(t[i].value); // (arg1, arg2, arg3)
+            }
+
+            size_t skip_op_pos = bytecode.size();
+            bytecode.push_back(Instruction(JMP, 0.0));
+            bytecode.push_back(Instruction(CONSTRUCTOR));                   // marker for constructor func
+            for (auto it = params.rbegin(); it != params.rend(); ++it) {
+                bytecode.push_back(Instruction(STORE, Value(*it)));         // grab the arguments from the stack and store in the scope
+            }
+
+
+            size_t end = compile_until_end(t, rp + 1, bytecode);            // compile function body
+
+
+            expect(end < t.size(), "Missing 'end' keyword for class constructor '" + class_name + "'");
+
+
+            bytecode[skip_op_pos].operand = Value((double)bytecode.size());
+
+
+
+
+
         }
 
         if (depth == 0) break;
@@ -115,6 +151,8 @@ size_t compile_new(const Tokens& t, size_t pos, Bytecode& bytecode) {
 
     bytecode.push_back(Instruction(PUSH, Value(object)));
     bytecode.push_back(Instruction(INSTC, Value(class_name)));
+
+    // call constructor
     return sc + 1;
 }
 

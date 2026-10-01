@@ -38,6 +38,7 @@ namespace Compiler {
     size_t compile_table_def(const Tokens& t, size_t pos, Bytecode& bytecode);     
     size_t compile_new(const Tokens& t, size_t pos, Bytecode& bytecode);          
 
+
     inline size_t compile_block(const Tokens& t, size_t pos, Bytecode& bytecode);
 
     inline void expect(bool ok, const std::string& msg) {
