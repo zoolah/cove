@@ -41,7 +41,10 @@ typedef enum {
 	INSTC,
 	CLOAD,
 	CSTORE,
-	CONSTRUCTOR
+	CONSTRUCTOR,
+	CCONSTRUCTOR,
+	MFUNC,
+	CMFUNC
 } Opcode;
 
 

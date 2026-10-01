@@ -59,6 +59,34 @@ size_t compile_class(const Tokens& t, size_t pos, Bytecode& bytecode) {
         
         }
 
+        if (c.type == TOK_IDENTIFIER && c.value != class_name && t[cursor + 1].type == TOK_LP) {
+            // method definition
+
+            auto lp = cursor + 1;
+            size_t rp = find_type(t, lp + 1, TOK_RP); // )
+            std::vector<std::string> params;
+            for (size_t i = lp + 1; i < rp; ++i) {
+                if (t[i].type == TOK_IDENTIFIER) params.push_back(t[i].value);
+            }
+
+            bytecode.push_back(Instruction(MFUNC, Value(c.value))); // mark member function
+
+            size_t skip_op_pos = bytecode.size();
+            bytecode.push_back(Instruction(JMP, 0.0));                      // jmp over first time
+
+            for (auto it = params.rbegin(); it != params.rend(); ++it) {
+                bytecode.push_back(Instruction(STORE, Value(*it))); 
+            }
+            
+            size_t end = compile_until_end(t, rp + 1, bytecode); // compile method body
+            expect(end < t.size(), "Missing 'end' keyword for method '" + c.value + "'");
+            bytecode.push_back(Instruction(PUSH, 0)); 
+            bytecode.push_back(Instruction(RET));
+
+            bytecode[skip_op_pos].operand = Value((double)bytecode.size()); 
+            cursor = end;
+        }
+
         // find constructor
         if (c.value == class_name && t[cursor + 1].type == TOK_LP) { // classname(
             auto lp = cursor + 1;
@@ -70,9 +98,11 @@ size_t compile_class(const Tokens& t, size_t pos, Bytecode& bytecode) {
                 if (t[i].type == TOK_IDENTIFIER) params.push_back(t[i].value); // (arg1, arg2, arg3)
             }
 
-            size_t skip_op_pos = bytecode.size();
-            bytecode.push_back(Instruction(JMP, 0.0));
+            
             bytecode.push_back(Instruction(CONSTRUCTOR));                   // marker for constructor func
+
+            size_t skip_op_pos = bytecode.size();
+            bytecode.push_back(Instruction(JMP, 0.0));                      // jmp over first time
             for (auto it = params.rbegin(); it != params.rend(); ++it) {
                 bytecode.push_back(Instruction(STORE, Value(*it)));         // grab the arguments from the stack and store in the scope
             }
@@ -83,8 +113,12 @@ size_t compile_class(const Tokens& t, size_t pos, Bytecode& bytecode) {
 
             expect(end < t.size(), "Missing 'end' keyword for class constructor '" + class_name + "'");
 
+            bytecode.push_back(Instruction(PUSH, 0)); 
+            bytecode.push_back(Instruction(RET));
+
 
             bytecode[skip_op_pos].operand = Value((double)bytecode.size());
+            cursor = end;
 
 
 
@@ -149,9 +183,14 @@ size_t compile_new(const Tokens& t, size_t pos, Bytecode& bytecode) {
     size_t sc = class_pos + 1;
     expect(t[sc].type == TOK_SC, "Expected ';' after class instantiation");
 
-    bytecode.push_back(Instruction(PUSH, Value(object)));
-    bytecode.push_back(Instruction(INSTC, Value(class_name)));
+    compile_args(t, lp, rp, bytecode);
+    bytecode.push_back(Instruction(PUSH, Value(object))); // object name 
+    bytecode.push_back(Instruction(INSTC, Value(class_name))); // instance of class named 'class_name'
 
+    bytecode.push_back(Instruction(PUSH, Value(class_name)));
+    bytecode.push_back(Instruction(CCONSTRUCTOR, Value(object))); // call constructor for the object
+
+    
     // call constructor
     return sc + 1;
 }

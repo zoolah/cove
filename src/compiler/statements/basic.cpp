@@ -105,6 +105,20 @@ size_t compile_method_call(const Tokens& t, size_t pos, Bytecode& bytecode) {
     return end_of_call(t, rp);
 }
 
+size_t compile_member_function_call(const Tokens& t, size_t pos, Bytecode& bytecode) {
+    const std::string& instance = t[pos].value;
+    const std::string& function = t[pos + 2].value;
+    size_t lp = pos + 3;
+    size_t rp = find_close(t, lp);
+    expect(rp < t.size(), "Missing closing parenthesis in member function call to '" + instance + "::" + function + "'");
+
+    compile_args(t, lp, rp, bytecode);
+    bytecode.push_back(Instruction(PUSH, Value(instance)));
+    bytecode.push_back(Instruction(CMFUNC, Value(function)));
+    bytecode.push_back(Instruction(POP));
+    return end_of_call(t, rp);
+}
+
 size_t compile_table_assign(const Tokens& t, size_t pos, Bytecode& bytecode) {
     const std::string& table = t[pos].value;
     expect(t[pos + 2].type == TOK_IDENTIFIER,

@@ -52,6 +52,7 @@ std::vector<Instruction> Compiler::evaluate_expression(const std::vector<Token>&
     for (size_t i = 0; i < n; ++i) {
         const Token& tok = infix_expr[i];
         const bool ident = tok.type == TOK_IDENTIFIER;
+        const bool member_call = ident && is(i + 1, TOK_DCOLON) && is(i + 2, TOK_IDENTIFIER) && is(i + 3, TOK_LP);
         const bool dotted_call = ident && is(i + 1, TOK_DOT) && is(i + 2, TOK_IDENTIFIER) && is(i + 3, TOK_LP);
         const bool std_call = ident && is(i + 1, TOK_LP);
 
@@ -62,12 +63,13 @@ std::vector<Instruction> Compiler::evaluate_expression(const std::vector<Token>&
             push_call("INPUT", std::move(args));
             i = rp;
         }
-        else if (dotted_call || std_call) {
-            const std::string name = dotted_call ? tok.value + "." + infix_expr[i + 2].value : tok.value;
-            const size_t lp = dotted_call ? i + 3 : i + 1;
+        else if (member_call || dotted_call || std_call) {
+            const std::string name = member_call ? tok.value + "::" + infix_expr[i + 2].value :
+                (dotted_call ? tok.value + "." + infix_expr[i + 2].value : tok.value);
+            const size_t lp = (member_call || dotted_call) ? i + 3 : i + 1;
             const size_t rp = find_close(lp);
             if (rp >= n) throw std::runtime_error("Missing closing parenthesis in function call to '" + name + "'");
-            push_call("CALL:" + name, parse_arguments(lp, rp));
+            push_call(std::string(member_call ? "MFUNC:" : "CALL:") + name, parse_arguments(lp, rp));
             i = rp;
         }
         else if (ident && (is(i + 1, TOK_DCOLON) || is(i + 1, TOK_DOT)) && is(i + 2, TOK_IDENTIFIER)) {
@@ -119,7 +121,15 @@ std::vector<Instruction> Compiler::evaluate_expression(const std::vector<Token>&
             bytecode.emplace_back(PUSH, Value(v));
         }
         else if (tok.type == TOK_IDENTIFIER) {
-            if (v.rfind("CALL:", 0) == 0) {
+            if (v.rfind("MFUNC:", 0) == 0) {
+                const std::string member_call = v.substr(6);
+                const size_t separator = member_call.find("::");
+                auto& args = call_args[idx];
+                for (const auto& arg : args) append(evaluate_expression(arg));
+                bytecode.emplace_back(PUSH, Value(member_call.substr(0, separator)));
+                bytecode.emplace_back(CMFUNC, Value(member_call.substr(separator + 2)));
+            }
+            else if (v.rfind("CALL:", 0) == 0) {
                 const std::string fn = v.substr(5);
                 auto& args = call_args[idx];
                 for (auto it = args.rbegin(); it != args.rend(); ++it) append(evaluate_expression(*it));

@@ -113,7 +113,7 @@ namespace Standalone {
             bytecode.reserve(static_cast<std::size_t>(instruction_count));
             for (std::uint64_t index = 0; index < instruction_count; ++index) {
                 const std::uint32_t opcode = read_uint32(buffer, offset);
-                if (opcode > static_cast<std::uint32_t>(CSTORE)) {
+                if (opcode > static_cast<std::uint32_t>(CMFUNC)) {
                     throw std::runtime_error("Invalid standalone bytecode opcode");
                 }
 

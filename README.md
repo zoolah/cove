@@ -19,12 +19,12 @@ Documentation Site - https://zoolah.github.io/cove/web/documentation.html
 - string concatenation: `..`
 - tables with dot access: `profile.name`
 - tables can hold function values and call them through the table: `obj.fn(...)`
-- classes with declared members: `class`, `new`, and `instance::member`
+- classes with declared members, constructors, and member functions
 - variable reassignment after declaration: `varname = anyexpression;`
 - function declarations: `function name(arg1, arg2) ... end`
 - function calls: `name(value1, value2)` and return values with `return expression`
 - nested argument expressions and nested parentheses inside function calls
-- a fresh variable, table, and class-instance scope for every function call
+- a fresh variable, table, and class-instance scope for every function, constructor, and member-function call
 - string input with `input(prompt)`
 - bytecode disassembly with `--verbose`
 
@@ -157,6 +157,7 @@ An expression can contain:
 name              a variable, or a function name (evaluates to a function value)
 t.key             a table field read
 inst::member      a class instance member read
+inst::method(a)   a class member-function call
 f(a, b)           a function call
 t.fn(a, b)        a call through a table field
 input(prompt)     a line of input, as a string
@@ -240,21 +241,38 @@ A function name used as an expression evaluates to a function value. Function va
 
 ```cove
 class Person {
-     str name;
-     num health;
+    str name;
+    num health;
+
+    Person(initialName, initialHealth)
+        this::name = initialName;
+        this::health = initialHealth;
+    end
+
+    getName()
+        return this::name;
+    end
+
+    setHealth(value)
+        this::health = value;
+    end
 }
 
-new Person() person;
+new Person("Bryan", 100) person;
 
-person::health = 100;
-person::name = "Bryan";
+str name = person::getName();
+person::setHealth(90);
 
-print(person::name .. " has " .. person::health .. " health!");
+print(name .. " has " .. person::health .. " health!");
 ```
 
-A class body contains only member declarations of the form `num name;` or `str name;`. There are no methods and no constructors, so the parentheses in `new Class() instance;` are required but their contents are not compiled. Members are initialized to `0` (`num`) or `""` (`str`); the keyword selects that default and does not restrict later assignments.
+A class body can contain fields, one constructor, and member functions. Fields are declared as `num name;` or `str name;` and start at `0` or `""`, respectively. These keywords select the initial value; Cove does not enforce a field's type after initialization.
 
-Members are read and written with `instance::member`. Assigning to a member that was not declared raises `Member not found in class instance`. Each instance holds its own copy of the class members.
+The constructor has the same name as its class and uses ordinary parameter syntax, as in `Person(initialName, initialHealth)`. Create an instance with `new Class(arguments) instance;`. The argument values are bound to constructor parameters from left to right. A class must define a constructor before it can be instantiated; otherwise the VM raises `Constructor not defined for class`.
+
+Member functions are declared with a name and parameter list, without a return-type prefix: `getName()` or `setName(value)`. Call one with `instance::method(arguments)`. Calls can be expressions, including in a typed variable declaration, or standalone statements. `return expression;` returns a value to an expression call; a method that reaches its end without returning an expression returns `0`. A standalone method call discards its return value.
+
+Use `instance::member` to read or write a field from outside the class. Inside a constructor or member function, use `this::member` to access the field of the instance currently being constructed or called. `this` is only valid in those class routines. Assigning to an undeclared field raises `Member not found in class instance`; each instance owns an independent copy of its class fields.
 
 Class definitions execute at runtime, in program order, and are global. `new` fails with `Class not found` if the class definition has not executed yet. Instances follow the same scope rules as tables (see Scope).
 
@@ -502,15 +520,16 @@ INC ++       DEC --                    EOF      (defined, never produced)
  7  function                     compile_function
  8  class                        compile_class
  9  new                          compile_new
-10  id ::  (3+ tokens follow)    compile_member_assign
-11  input                        error: only valid in an expression
-12  id (                         compile_call
-13  id . id (                    compile_method_call
-14  id .                         compile_table_assign
-15  id ++ | id --                compile_incdec_stmt
-16  id =                         compile_assign
-17  return                       compile_return
-18  anything else                error: Unknown identifier
+10  id :: id (                   compile_member_function_call
+11  id :: id =                   compile_member_assign
+12  input                        error: only valid in an expression
+13  id (                         compile_call
+14  id . id (                    compile_method_call
+15  id .                         compile_table_assign
+16  id ++ | id --                compile_incdec_stmt
+17  id =                         compile_assign
+18  return                       compile_return
+19  anything else                error: Unknown identifier
 ```
 
 Block statements call `compile_until_end`, which compiles statements until the `end` keyword and returns its index, so blocks nest naturally. Forward jumps are emitted with a placeholder operand and patched once the block has been compiled. All jump operands are absolute instruction indices.
@@ -538,8 +557,13 @@ tbl t = { k = e; }          CT t  PUSH t  <e>  STV k
 t.k = e;                    PUSH t  <e>  STV k
 
 class C { num a; str b; }   CDEF C  CNUM a  CSTR b
-new C() i;                  PUSH C  INSTC i
+class C { C(x) ... end }    CONSTRUCTOR  JMP after  STORE x  ...  RET
+class C { get() ... end }   MFUNC get  JMP after  ...  RET
+new C(x) i;                 PUSH x  PUSH C  INSTC i  PUSH i  CCONSTRUCTOR C
 i::m = e;                   <e>  PUSH i  PUSH m  CSTORE
+i::get()                    PUSH i  CMFUNC get
+this::m = e;                <e>  PUSH this  PUSH m  CSTORE
+this::m                     PUSH this  CLOAD m
 ```
 
 In every case `end` is the index just past the last instruction of the construct, `after` is the index just past the function's trailing `RET`, and `L` is the index of the first condition instruction.
@@ -550,7 +574,7 @@ In every case `end` is the index just past the last instruction of the construct
 
 **Pass 1** converts the tokens to reverse Polish notation with the shunting-yard algorithm. All binary operators are left-associative. Constructs that need more than one token are collapsed into a single marker token:
 
-- `name(args)` and `table.name(args)` become `CALL:name` / `CALL:table.name`
+- `name(args)`, `table.name(args)`, and `instance::method(args)` become call markers
 - `input(arg)` becomes `INPUT`
 - `a.b` and `a::b` become one identifier, `a.b` / `a::b`
 - `x++`, `x--`, `++x`, `--x` become the identifier followed by `POSTINC`, `POSTDEC`, `PREINC`, or `PREDEC`
@@ -569,6 +593,7 @@ a and b         <a>  <b>  MUL
 a or b          <a>  <b>  ADD
 f(a, b)         <a>  <b>  CALL f
 t.f(a, b)       <a>  <b>  PUSH t  LTV f  CALL
+i::m(a, b)      <a>  <b>  PUSH i  CMFUNC m
 input(p)        <p>  INP
 ++x             LOAD x  PUSH 1  ADD  DUP  STORE x       leaves the new value
 x++             LOAD x  DUP  PUSH 1  ADD  STORE x       leaves the old value
@@ -587,6 +612,8 @@ public:
     std::vector<umap<std::string, umap<std::string, Value>>> tablescopes;     // table scopes
     umap<std::string, umap<std::string, Value>> cdefs;                        // class definitions
     std::vector<umap<std::string, umap<std::string, Value>>> cscopes;         // class instance scopes
+    umap<std::string, umap<std::string, uint64_t>> member_function_addresses; // class -> method -> entry point
+    std::vector<umap<std::string, std::string>> class_type_scopes;            // instance -> class name
     std::string curr_class_def = "";                                          // class being defined
     std::vector<uint64_t> call_stack;                                         // return addresses
     umap<std::string, uint64_t> function_addresses;                           // function entry points
@@ -601,26 +628,29 @@ stack                Operand stack shared by the whole program. Instructions pop
 scopes               Stack of variable maps (name -> Value). Index 0 is global; every CALL pushes one, RET pops it.
 tablescopes          Parallel stack of table maps (table name -> (key -> Value)).
 cscopes              Parallel stack of class instance maps (instance name -> (member -> Value)).
+class_type_scopes    Parallel stack mapping instance names to their class names.
 cdefs                Class definitions (class name -> member defaults). Global, not scoped.
+member_function_addresses
+                     Member function addresses grouped by class and function name.
 curr_class_def       Name set by CDEF so that the following CNUM / CSTR know which class they extend.
 call_stack           Return addresses pushed by CALL and popped by RET.
 function_addresses   Function name -> index of the instruction after its FUNC marker.
 pc                   Index of the instruction being executed.
 ```
 
-`scopes`, `tablescopes`, and `cscopes` always have the same depth: they are pushed together by `CALL` and popped together by `RET`. Lookups walk them from the back (innermost) to the front (global); writes to variables go to the back only. `CT` creates a table in the back scope, while `STV` and `CSTORE` modify the nearest existing table or instance. `INSTC` copies the class definition's member map into the back instance scope, so instances are independent.
+`scopes`, `tablescopes`, `cscopes`, and `class_type_scopes` have matching call depth. Function, constructor, and member-function calls push one entry onto each; `RET` pops them. Lookups walk the instance scopes from the back (innermost) to the front (global). `INSTC` copies the class definition's member map into the back instance scope, so instances are independent.
 
 ### Execution
 
 `Machine::run(bytecode)` performs the following:
 
-1. Resets `pc`, `call_stack`, `function_addresses`, `cdefs`, and all three scope stacks, then pushes one empty global entry onto each scope stack. The operand stack is not cleared.
+1. Resets `pc`, call metadata, function and method addresses, class definitions, and scope stacks, then pushes one empty global entry onto each scope stack. The operand stack is not cleared.
 2. Scans the bytecode once and records `function_addresses[name] = index + 1` for every `FUNC` instruction. This is why functions can be called before they are defined.
-3. Loops while `pc < bytecode.size()`: fetch the instruction, set `next_pc = pc + 1`, dispatch to the handler for its opcode, then set `pc = next_pc`. Only control-flow instructions change `next_pc`.
+3. Loops while `pc < bytecode.size()`: fetch the instruction, set `next_pc = pc + 1`, dispatch to the handler for its opcode, then set `pc = next_pc`. Control-flow instructions and class-call instructions can change `next_pc`.
 
 There is no halt instruction; a program ends when `pc` moves past the last instruction, which is also what a jump to `bytecode.size()` does. Errors are `std::runtime_error` exceptions that propagate out of `run`.
 
-Instructions are dispatched to one handler per opcode group. Each handler has the signature `void(Machine&, Instruction&)`, except `cflow`, which also takes `uint64_t& next_pc`.
+Instructions are dispatched to one handler per opcode group. The `cflow` and `classes` handlers also take `uint64_t& next_pc` for calls and jumps.
 
 ```text
 ops::stack        PUSH POP DUP SWAP
@@ -629,16 +659,18 @@ ops::io           PRINT INP
 ops::vars         STORE LOAD
 ops::cflow        EQ NEQ LT GT  JZ JNZ JE JNE JMP  FUNC CALL RET
 ops::tables       CT STV LTV
-ops::classes      CDEF CNUM CSTR INSTC CLOAD CSTORE
+ops::classes      CDEF CNUM CSTR INSTC CLOAD CSTORE CONSTRUCTOR CCONSTRUCTOR MFUNC CMFUNC
 ```
 
 ### Calling convention
 
-A call sequence is: the caller pushes the arguments left to right, then executes `CALL`. `CALL` resolves the callee, pushes a new entry onto `scopes`, `tablescopes`, and `cscopes`, pushes `next_pc` onto `call_stack`, and jumps to the function's address. The function prologue is one `STORE` per parameter in reverse order, which pops the arguments into the new scope. `RET` pops the return value, pops the three scope stacks (never below the global entry), restores `pc` from `call_stack`, and pushes the return value again for the caller.
+A global function call pushes arguments left to right, then executes `CALL`. The VM creates call scopes and records `next_pc`; the reverse-order `STORE` prologue binds parameters. `RET` restores the return address and pushes the result for the caller.
+
+A member-function call pushes its arguments, then the receiver instance name, and executes `CMFUNC method`. The VM looks up the receiver's class and that class's method address, creates call scopes, and makes the receiver the active `this` instance. The method uses the same parameter and return convention as a global function. A constructor call similarly jumps to the class's `CONSTRUCTOR` entry and activates the new instance; constructor return values are discarded.
 
 `CALL` has two forms. With a string operand it calls that function by name. Without an operand it pops the callee from the stack, which must be a function value or a string naming a function; this is the form used by `table.fn(...)`. In both forms the callee is looked up in `function_addresses` and an unknown name raises `Undefined function`.
 
-The compiler emits `POP` only after an increment/decrement statement. The result of a call statement, and the value of a `for` loop's iterator expression, stay on the operand stack.
+The compiler emits `POP` after increment/decrement statements and standalone member-function calls. Global function call results and the values of `for` iterator expressions stay on the operand stack.
 
 ### Opcode reference
 
@@ -680,6 +712,10 @@ CSTR     Add a string member (default "") named by the operand to the current cl
 INSTC    Pop a class name; create an instance named by the operand from that class in the current scope
 CLOAD    Pop an instance name, load member[operand] of that instance and push it onto the stack
 CSTORE   Pop a member name, pop an instance name, pop a value, assign instance.member = value
+CONSTRUCTOR Record the current class constructor entry point
+CCONSTRUCTOR Pop an instance name and call the constructor named by the operand
+MFUNC    Record the current class member-function entry point
+CMFUNC   Pop a receiver name and call the named method on that receiver
 ```
 
 Details that the summary above does not capture:
@@ -709,6 +745,10 @@ INP      Writes the prompt without a newline, then reads one whitespace-delimite
 DUP      SWAP raises "SWAP requires two values" when fewer than two values are on the stack.
 CLOAD    Searches the instance scopes innermost to outermost; the member must exist.
 CSTORE   The member must exist on the instance.
+CLOAD / CSTORE
+         The instance name `this` resolves to the receiver active in the current constructor or method.
+MFUNC    Registers the instruction after its marker and skip jump as the method entry point.
+CMFUNC   Resolves methods by the receiver instance's class; a missing method raises a runtime error.
 ```
 
 ### Example compilation

@@ -116,7 +116,10 @@ namespace ops {
                 vm.scopes.emplace_back();
                 vm.tablescopes.emplace_back();
                 vm.cscopes.emplace_back();
+                vm.class_type_scopes.emplace_back();
                 vm.call_stack.push_back(next_pc);
+                vm.constructor_call_stack.push_back(false);
+                vm.member_function_call_stack.push_back(false);
                 next_pc = it->second;
                 break;
             }
@@ -124,14 +127,20 @@ namespace ops {
                 if (vm.call_stack.empty()) {
                     throw std::runtime_error("Call stack underflow on RET");
                 }
+                const bool constructor_call = vm.constructor_call_stack.back();
+                const bool member_function_call = vm.member_function_call_stack.back();
+                vm.constructor_call_stack.pop_back();
+                vm.member_function_call_stack.pop_back();
                 Value result = vm.stack.pop();
                 if (vm.scopes.size() > 1) vm.scopes.pop_back();
                 if (vm.tablescopes.size() > 1) vm.tablescopes.pop_back();
                 if (vm.cscopes.size() > 1) vm.cscopes.pop_back();
+                if (vm.class_type_scopes.size() > 1) vm.class_type_scopes.pop_back();
+                if (constructor_call || member_function_call) vm.constructor_instances.pop_back();
 
                 next_pc = vm.call_stack.back();
                 vm.call_stack.pop_back();
-                vm.stack.push(result);
+                if (!constructor_call) vm.stack.push(result);
                 break;
             }
             default:

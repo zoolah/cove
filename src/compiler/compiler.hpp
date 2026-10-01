@@ -26,6 +26,7 @@ namespace Compiler {
     size_t compile_return(const Tokens& t, size_t pos, Bytecode& bytecode);       
     size_t compile_call(const Tokens& t, size_t pos, Bytecode& bytecode);          
     size_t compile_method_call(const Tokens& t, size_t pos, Bytecode& bytecode);  
+    size_t compile_member_function_call(const Tokens& t, size_t pos, Bytecode& bytecode);
     size_t compile_table_assign(const Tokens& t, size_t pos, Bytecode& bytecode);  
     size_t compile_member_assign(const Tokens& t, size_t pos, Bytecode& bytecode); 
 
@@ -104,7 +105,8 @@ namespace Compiler {
         const std::string& kw = curr.value;
         auto next_is = [&](size_t off, TokenType type) { return pos + off < t.size() && t[pos + off].type == type; };
 
-        const bool is_member_assign = pos + 3 < t.size() && next_is(1, TOK_DCOLON);                         
+        const bool is_member_assign = pos + 3 < t.size() && next_is(1, TOK_DCOLON) && next_is(3, TOK_SEQ);
+        const bool is_member_function_call = next_is(1, TOK_DCOLON) && next_is(2, TOK_IDENTIFIER) && next_is(3, TOK_LP);
         const bool is_call          = next_is(1, TOK_LP);                                                  
         const bool is_method_call   = next_is(1, TOK_DOT) && next_is(2, TOK_IDENTIFIER) && next_is(3, TOK_LP); 
         const bool is_table_assign  = next_is(1, TOK_DOT);                                                  
@@ -121,6 +123,7 @@ namespace Compiler {
         if (kw == "class")               return compile_class(t, pos, bytecode);
         if (kw == "new")                 return compile_new(t, pos, bytecode);
 
+        if (is_member_function_call)     return compile_member_function_call(t, pos, bytecode);
         if (is_member_assign)            return compile_member_assign(t, pos, bytecode);
         if (kw == "input")               throw std::runtime_error("input() can only be used in an expression");
         if (is_call)                     return compile_call(t, pos, bytecode);

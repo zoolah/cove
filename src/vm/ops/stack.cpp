@@ -6,6 +6,9 @@ namespace ops {
             case PUSH:
                 vm.stack.push(instr.operand);
                 break;
+            case POP:
+                vm.stack.pop();
+                break;
             case DUP: {
                 Value v = vm.stack.pop();   
                 vm.stack.push(v);

@@ -17,7 +17,7 @@ namespace ops {
     void vars(Machine& vm, Instruction& instr);
     void cflow(Machine& vm, Instruction& instr, uint64_t& next_pc);
     void tables(Machine& vm, Instruction& instr);
-    void classes(Machine& vm, Instruction& instr);
+    void classes(Machine& vm, Instruction& instr, uint64_t& next_pc);
 }
 
 class Machine {
@@ -27,26 +27,42 @@ public:
     std::vector<umap<std::string, umap<std::string, Value>>> tablescopes;
 
     umap<std::string, umap<std::string, Value>> cdefs;
+    umap<std::string, uint64_t> classdef_constructor_pos;
+    umap<std::string, umap<std::string, uint64_t>> member_function_addresses;
     std::vector<umap<std::string, umap<std::string, Value>>> cscopes;
+    std::vector<umap<std::string, std::string>> class_type_scopes;
     std::string curr_class_def = "";
 
+    
+
     std::vector<uint64_t> call_stack;
+    std::vector<bool> constructor_call_stack;
+    std::vector<bool> member_function_call_stack;
+    std::vector<std::string> constructor_instances;
+
     umap<std::string, uint64_t> function_addresses;
     uint64_t pc = 0;
 
     inline void run(std::vector<Instruction> bc) {
         pc = 0;
         call_stack.clear();
+        constructor_call_stack.clear();
+        member_function_call_stack.clear();
+        constructor_instances.clear();
         function_addresses.clear();
         cdefs.clear();
+        classdef_constructor_pos.clear();
+        member_function_addresses.clear();
 
         scopes.clear();
         cscopes.clear();
+        class_type_scopes.clear();
         tablescopes.clear();
 
         scopes.emplace_back();
         tablescopes.emplace_back();
         cscopes.emplace_back();
+        class_type_scopes.emplace_back();
 
         for (size_t i = 0; i < bc.size(); ++i) {
             if (bc[i].op == FUNC) {
@@ -60,7 +76,7 @@ public:
 
             switch (instr.op) {
                 // Stack
-                case PUSH: case DUP: case SWAP:
+                case PUSH: case POP: case DUP: case SWAP:
                     ops::stack(*this, instr);
                     break;
                 
@@ -92,8 +108,8 @@ public:
                     break;
 
                 // Classes
-                case CDEF: case CNUM: case CSTR: case INSTC: case CLOAD: case CSTORE:
-                    ops::classes(*this, instr);
+                case CDEF: case CNUM: case CSTR: case INSTC: case CLOAD: case CSTORE: case CONSTRUCTOR: case CCONSTRUCTOR: case MFUNC: case CMFUNC:
+                    ops::classes(*this, instr, next_pc);
                     break;
             }
 

@@ -66,6 +66,10 @@ void Compiler::print_bytecode(const std::vector<Instruction>& bytecode) {
             case INSTC: label = "INSTC"; operand_text = instr.operand.as_string(); has_operand = true; break;
             case CLOAD:  label = "CLOAD"; operand_text = instr.operand.as_string(); has_operand = true; break;
             case CSTORE: label = "CSTORE"; break;
+            case CONSTRUCTOR: label = "CONSTRUCTOR"; break;
+            case CCONSTRUCTOR: label = "CCONSTRUCTOR"; operand_text = instr.operand.as_string(); has_operand = true; break;
+            case MFUNC: label = "MFUNC"; operand_text = instr.operand.as_string(); has_operand = true; break;
+            case CMFUNC: label = "CMFUNC"; operand_text = instr.operand.as_string(); has_operand = true; break;
             default:     label = "UNKNOWN"; break;
             }
 
