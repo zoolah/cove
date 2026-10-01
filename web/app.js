@@ -1,11 +1,48 @@
-const sampleProgram = `str greeting = "Hello from Cove!";
-print(greeting);
-
-num total = 0;
-for i = 1, i < 6, i++ do
-    total = total + i;
+const sampleProgram = `
+function twice(x) 
+  return x * 2; 
 end
-print("sum: " .. total);`;
+
+class Box { 
+  num value; 
+  Box(x) 
+    this::value = x; 
+  end 
+  get() 
+    return this::value; 
+  end 
+}
+new Box(2) box;
+
+tbl demo = { 
+  fn = twice; 
+  text = "Cove"; 
+}
+
+num n = demo.fn(box::get());
+
+n = ++n + 5 % 2 - 1 / 1;
+print(n++); 
+print(--n); 
+print(box::value);
+
+if n ~= 0 and n > 1 or n == 0 then
+ print(demo.text .. n); 
+end
+
+while n > 0 do 
+  n--; 
+end
+
+for i = 0, i < 1, i++ do 
+  print(i); 
+end
+
+n = "done"; 
+print(n);
+
+str name = input("Name? "); 
+print(name);`;
 
 const sourceEditor = document.querySelector("#source");
 const lineNumbers = document.querySelector("#line-numbers");
