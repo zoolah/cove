@@ -1,4 +1,3 @@
-```markdown
 # Cove
 
 Lightweight stack-based language in C++ with Lua-like syntax.
@@ -288,4 +287,3 @@ add(1, 2);
 ```
 
 `JMP 10` skips the function body on ordinary execution. The final `PUSH 0 RET` is the implicit return. The `CALL` jumps to the address recorded for `add`.
-```
